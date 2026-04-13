@@ -10,6 +10,7 @@ Wipe All button -> clears the entire store after a confirmation prompt.
 
 When the queue is exhausted the game shows a completion screen.
 """
+# Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
 import random
 import tkinter as tk

@@ -13,6 +13,7 @@ Answers are always exact — generated as divisor × quotient = dividend.
 For decimal questions, dividend is chosen so dividend % divisor ≠ 0,
 guaranteeing a non-integer result that still terminates.
 """
+# Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
 import tkinter as tk
 import random

@@ -11,6 +11,7 @@ Each entry is a dict:
 
 Deduplication key: (op, a, b).
 """
+# Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
 import json
 import os

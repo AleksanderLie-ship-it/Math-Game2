@@ -17,6 +17,7 @@ Optional overrides:
   ALLOW_DECIMAL — set True to accept decimal answers
   _add_extra_buttons(btn_row) — add extra buttons to the button row
 """
+# Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
 import datetime
 import time as _time

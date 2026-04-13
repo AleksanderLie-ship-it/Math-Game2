@@ -7,6 +7,7 @@ To add a new game:
   1. Create games/your_game.py subclassing BaseGame
   2. Import it below and add it to CATEGORIES
 """
+# Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
 __version__ = "0.3.0"
 
@@ -216,7 +217,11 @@ class App:
 
         self._review_row(inner)
 
-        tk.Frame(inner, bg="#f8fafc", height=36).pack()
+        # ── Footer ────────────────────────────────────────────────────────────
+        tk.Frame(inner, bg="#e2e8f0", height=1).pack(fill=tk.X, padx=48, pady=(24, 0))
+        tk.Label(inner,
+                 text=f"Math Practice  v{__version__}  ·  © 2026 Aleksander Lie",
+                 font=("Helvetica", 8), bg="#f8fafc", fg="#cbd5e1").pack(pady=(6, 24))
 
     # ------------------------------------------------------------------ rows
 

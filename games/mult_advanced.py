@@ -3,6 +3,7 @@ mult_advanced.py
 ----------------
 Advanced multiplication: 75% three-digit × two-digit, 25% intermediate-style.
 """
+# Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
 import tkinter as tk
 import random

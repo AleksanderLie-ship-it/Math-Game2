@@ -5,6 +5,7 @@ Beginner division: mirrors the 1–10 multiplication table.
 Divisor in [2, 10], quotient in [1, 10] — always a whole number.
 e.g. 42 ÷ 7 = 6
 """
+# Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
 import tkinter as tk
 import random

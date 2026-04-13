@@ -3,6 +3,7 @@ mult_basic.py
 -------------
 Basic multiplication practice: single-digit × single-digit (1–10).
 """
+# Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
 import tkinter as tk
 import random

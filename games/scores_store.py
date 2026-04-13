@@ -9,6 +9,7 @@ Schema:
 
 Ranking: correct DESC → accuracy DESC → streak DESC.
 """
+# Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
 import json
 import os

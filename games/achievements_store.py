@@ -4,6 +4,7 @@ achievements_store.py
 Persistent store for earned achievements and global gameplay stats.
 Saved to %APPDATA%\\MathPractice\\achievements.json
 """
+# Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
 import json
 import os

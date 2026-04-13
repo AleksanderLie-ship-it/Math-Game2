@@ -5,6 +5,7 @@ Intermediate multiplication: two-digit × one-digit, one-digit × two-digit,
 and two-digit × two-digit, chosen randomly each round.
 No noisy labels — just the problem.
 """
+# Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
 import tkinter as tk
 import random

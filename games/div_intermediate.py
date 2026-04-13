@@ -9,6 +9,7 @@ Two alternating types:
 
 Generated as divisor × quotient = dividend to guarantee exact answers.
 """
+# Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
 import tkinter as tk
 import random

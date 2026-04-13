@@ -19,6 +19,7 @@ Each achievement dict:
                   ctx:  {"session_streak", "speed_demon", "session_correct"} for live
                         {"session_minutes"} for end
 """
+# Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
 # ── constants ──────────────────────────────────────────────────────────────────
 
