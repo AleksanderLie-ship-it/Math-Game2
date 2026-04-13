@@ -8,6 +8,8 @@ To add a new game:
   2. Import it below and add it to CATEGORIES
 """
 
+__version__ = "0.3.0"
+
 import tkinter as tk
 from tkinter import ttk
 
@@ -101,7 +103,7 @@ CATEGORIES = [
 class App:
     def __init__(self, root):
         self.root = root
-        self.root.title("Math Practice")
+        self.root.title(f"Math Practice  v{__version__}")
         self.root.geometry("960x680")
         self.root.minsize(700, 480)
         self.root.configure(bg="#f8fafc")
@@ -610,7 +612,7 @@ class App:
 
 def main():
     root = tk.Tk()
-    root.title("Math Practice")
+    root.title(f"Math Practice  v{__version__}")
     App(root)
     root.mainloop()
 

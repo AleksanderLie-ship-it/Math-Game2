@@ -1,0 +1,39 @@
+0.3.0
+
+CHANGELOG
+=========
+
+v0.3.0  (2026-04-13)
+--------------------
+- Added full achievement system with 49 achievements across 6 categories
+- Achievement points displayed in menu header (star icon)
+- Trophy Room panel — scrollable list of all achievements, earned/locked state
+- Intermediate and Advanced games locked behind achievement prerequisites
+  (Multiplication: Beginner's "Sharp" unlocks Intermediate, etc.)
+- Locked game cards show which achievement is required to unlock them
+- Toast popup notifications when achievements are earned mid-session or on exit
+- Staggered popup queue so multiple achievements don't overlap
+- Achievement data persisted to %APPDATA%\MathPractice\achievements.json
+- Fixed: menu mousewheel scroll now works anywhere on the menu, not just the scrollbar
+- Fixed: locked card popup triggers on the full card including the gray unlock box
+- Fixed: locked card message now shows full game context ("Sharp in Multiplication: Beginner")
+- Fixed: Practice Missed "All Cleared" state now shows a message and auto-returns to menu
+
+v0.2.0  (2026-04-13)
+--------------------
+- Added Division: Beginner, Intermediate, Advanced game modes
+- Added Practice Missed — review queue for all previously wrong answers
+- Missed questions persisted to %APPDATA%\MathPractice\missed.json
+- Leaderboard per game, persisted to %APPDATA%\MathPractice\scores.json
+- Score entry prompt with name input after each session
+- Base game architecture (BaseGame) shared across all game modes
+- Progress bar, streak counter, accuracy display during play
+
+v0.1.0  (2026-04-13)
+--------------------
+- Initial build
+- Multiplication: Beginner, Intermediate, Advanced game modes
+- Timed question sessions with configurable length
+- Correct / incorrect feedback per answer
+- Basic leaderboard (in-memory)
+- Main menu with game selection cards
