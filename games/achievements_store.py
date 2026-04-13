@@ -1,0 +1,127 @@
+"""
+achievements_store.py
+---------------------
+Persistent store for earned achievements and global gameplay stats.
+Saved to %APPDATA%\\MathPractice\\achievements.json
+"""
+
+import json
+import os
+
+_DIR  = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "MathPractice")
+_PATH = os.path.join(_DIR, "achievements.json")
+
+_DEFAULT_STATS = {
+    "total_correct":    0,
+    "best_streak_ever": 0,
+    "days_played":      [],   # ISO date strings
+    "games_played":     [],   # game_id strings
+    "per_game":         {},   # game_id -> {sessions, best_accuracy, best_correct, best_attempts}
+    "missed_attempted": False,
+    "missed_cleared":   False,
+    "missed_resilient": False,
+    "lb_positions":     {},   # game_id -> best position achieved (1 = first place)
+    "night_owl":        False,
+    "early_bird":       False,
+}
+
+
+class AchievementsStore:
+    def __init__(self):
+        os.makedirs(_DIR, exist_ok=True)
+        self._data = self._load()
+
+    # ------------------------------------------------------------------ I/O
+
+    def _load(self):
+        try:
+            with open(_PATH, encoding="utf-8") as f:
+                d = json.load(f)
+            d.setdefault("earned", [])
+            d.setdefault("points", 0)
+            d.setdefault("stats",  {})
+            for k, v in _DEFAULT_STATS.items():
+                d["stats"].setdefault(k, v)
+            return d
+        except Exception:
+            return {"earned": [], "points": 0, "stats": dict(_DEFAULT_STATS)}
+
+    def _save(self):
+        with open(_PATH, "w", encoding="utf-8") as f:
+            json.dump(self._data, f, indent=2, ensure_ascii=False)
+
+    # ---------------------------------------------------------------- queries
+
+    def has(self, ach_id: str) -> bool:
+        return ach_id in self._data["earned"]
+
+    def get_points(self) -> int:
+        return self._data["points"]
+
+    def get_earned(self) -> list:
+        return list(self._data["earned"])
+
+    def get_stats(self) -> dict:
+        return self._data["stats"]
+
+    # ---------------------------------------------------------------- earning
+
+    def earn(self, ach_id: str, points: int) -> bool:
+        """Award an achievement. Returns True only if newly earned."""
+        if ach_id in self._data["earned"]:
+            return False
+        self._data["earned"].append(ach_id)
+        self._data["points"] += points
+        self._save()
+        return True
+
+    # ------------------------------------------------------------------ stats
+
+    def record_session(self, game_id, correct, attempts, accuracy, streak, today_str, hour):
+        """Commit end-of-session stats. Call before checking end achievements."""
+        s = self._data["stats"]
+
+        s["total_correct"]    = s.get("total_correct", 0) + correct
+        s["best_streak_ever"] = max(s.get("best_streak_ever", 0), streak)
+
+        days = s.setdefault("days_played", [])
+        if today_str not in days:
+            days.append(today_str)
+
+        if game_id:
+            played = s.setdefault("games_played", [])
+            if game_id not in played:
+                played.append(game_id)
+
+            pg    = s.setdefault("per_game", {})
+            entry = pg.setdefault(game_id, {
+                "sessions": 0, "best_accuracy": 0,
+                "best_correct": 0, "best_attempts": 0,
+            })
+            entry["sessions"]      += 1
+            entry["best_accuracy"]  = max(entry.get("best_accuracy",  0), accuracy)
+            entry["best_correct"]   = max(entry.get("best_correct",   0), correct)
+            entry["best_attempts"]  = max(entry.get("best_attempts",  0), attempts)
+
+        if hour >= 21:
+            s["night_owl"]  = True
+        if hour < 7:
+            s["early_bird"] = True
+
+        self._save()
+
+    def record_lb_position(self, game_id: str, position: int):
+        """Record a leaderboard position for a game (lower is better)."""
+        s   = self._data["stats"]
+        pos = s.setdefault("lb_positions", {})
+        if game_id not in pos or position < pos[game_id]:
+            pos[game_id] = position
+            self._save()
+
+    def set_stat(self, key: str, value):
+        """Set a single stat flag (e.g. missed_attempted)."""
+        self._data["stats"][key] = value
+        self._save()
+
+
+store = AchievementsStore()

@@ -19,11 +19,14 @@ Optional overrides:
 """
 
 import datetime
+import time as _time
 import tkinter as tk
 from tkinter import ttk
 
-from .missed_store  import store as _ms
-from .scores_store  import store as _ss
+from .missed_store       import store as _ms
+from .scores_store       import store as _ss
+from .achievements_store import store as _as
+from .achievements       import ACHIEVEMENTS, ACHIEVEMENTS_BY_ID
 
 
 class BaseGame:
@@ -41,6 +44,10 @@ class BaseGame:
         self.streak            = 0
         self.history           = []
         self.feedback_after_id = None
+
+        self._session_start = datetime.datetime.now()
+        self._answer_times  = []   # timestamps of recent correct answers (for speed demon)
+        self._popup_queue   = []   # pending achievement dicts to display
 
         self._build_layout()
         self.new_question()
@@ -125,7 +132,7 @@ class BaseGame:
                   bg="white", fg="#0f172a", border=True).pack(side=tk.LEFT, padx=(0, 8))
         self._btn(btn_row, "↺  Reset", self.reset_stats,
                   bg="white", fg="#0f172a", border=True).pack(side=tk.LEFT)
-        self._add_extra_buttons(btn_row)   # hook for subclasses
+        self._add_extra_buttons(btn_row)
 
         # Feedback strip
         self.feedback_frame = tk.Frame(body, bg="white")
@@ -275,10 +282,13 @@ class BaseGame:
         if self._answers_match(given, expected):
             self.correct += 1
             self.streak  += 1
+            self._answer_times.append(_time.time())
             self.history.insert(0, {"text": self.correct_history_text(expected), "ok": True})
             self.history = self.history[:8]
             self.show_feedback("correct", "✓  Correct!  Next one.")
             self.update_stats()
+            # Check live achievements (streaks, speed, first correct)
+            self._check_live_achievements()
             if self.feedback_after_id:
                 self.parent.after_cancel(self.feedback_after_id)
             self.feedback_after_id = self.parent.after(550, self._auto_next)
@@ -289,7 +299,6 @@ class BaseGame:
             self.show_feedback("wrong", "✗  Not quite. Try again.")
             self.answer_var.set("")
             self.update_stats()
-            # Track missed question
             q = self.get_question_dict()
             if q is not None:
                 _ms.add(q)
@@ -320,6 +329,7 @@ class BaseGame:
         self.attempts = 0
         self.streak   = 0
         self.history  = []
+        self._answer_times = []
         self.answer_var.set("")
         self.clear_feedback()
         self.new_question()
@@ -331,10 +341,122 @@ class BaseGame:
         if self.feedback_after_id:
             self.parent.after_cancel(self.feedback_after_id)
             self.feedback_after_id = None
+
+        # Commit stats + check end achievements (non-blocking popups)
+        newly_earned = self._commit_and_check()
+        if newly_earned:
+            self._show_popups_queued(newly_earned)
+
         if self.GAME_ID and self.attempts > 0:
             self._prompt_score_entry()
         else:
             self.back_callback()
+
+    # ============================================================ achievements
+
+    def _check_live_achievements(self):
+        """Check streak / speed / first-correct achievements mid-game."""
+        now     = _time.time()
+        recent  = [t for t in self._answer_times if now - t <= 60.0]
+        speed_ok = len(recent) >= 10
+
+        ctx = {
+            "session_streak":  self.streak,
+            "speed_demon":     speed_ok,
+            "session_correct": self.correct,
+        }
+        stats = _as.get_stats()
+
+        newly_earned = []
+        for ach in ACHIEVEMENTS:
+            if ach.get("when") != "live":
+                continue
+            if _as.has(ach["id"]):
+                continue
+            try:
+                if ach["check"](stats, ctx):
+                    if _as.earn(ach["id"], ach["points"]):
+                        newly_earned.append(ach)
+            except Exception:
+                pass
+
+        if newly_earned:
+            self._show_popups_queued(newly_earned)
+
+    def _commit_and_check(self):
+        """Commit session stats to store and check end achievements.
+        Returns list of newly earned achievement dicts."""
+        if self.attempts == 0:
+            return []
+
+        accuracy        = round((self.correct / self.attempts) * 100)
+        now             = datetime.datetime.now()
+        session_minutes = (now - self._session_start).total_seconds() / 60.0
+
+        _as.record_session(
+            self.GAME_ID,
+            self.correct, self.attempts, accuracy, self.streak,
+            now.date().isoformat(), now.hour,
+        )
+
+        stats = _as.get_stats()
+        ctx   = {"session_minutes": session_minutes}
+
+        newly_earned = []
+        for ach in ACHIEVEMENTS:
+            if ach.get("when") != "end":
+                continue
+            if _as.has(ach["id"]):
+                continue
+            try:
+                if ach["check"](stats, ctx):
+                    if _as.earn(ach["id"], ach["points"]):
+                        newly_earned.append(ach)
+            except Exception:
+                pass
+
+        return newly_earned
+
+    def _show_achievement_popup(self, ach, slot=0):
+        """Display a non-blocking toast popup for an earned achievement."""
+        try:
+            root = self.parent.winfo_toplevel()
+            root.update_idletasks()
+
+            w, h    = 300, 82
+            margin  = 16
+            spacing = h + 6
+            rx = root.winfo_x() + root.winfo_width()  - w - margin
+            ry = root.winfo_y() + root.winfo_height() - margin - h - slot * spacing
+
+            popup = tk.Toplevel(root)
+            popup.overrideredirect(True)
+            popup.attributes("-topmost", True)
+            popup.configure(bg="#1e293b")
+            popup.geometry(f"{w}x{h}+{rx}+{ry}")
+
+            f = tk.Frame(popup, bg="#1e293b", padx=14, pady=10)
+            f.pack(fill=tk.BOTH, expand=True)
+
+            tk.Label(f, text="  Achievement Unlocked!",
+                     font=("Helvetica", 8, "bold"),
+                     bg="#1e293b", fg="#f59e0b").pack(anchor="w")
+            tk.Label(f, text=f"  {ach['icon']}  {ach['name']}",
+                     font=("Helvetica", 11, "bold"),
+                     bg="#1e293b", fg="white").pack(anchor="w")
+            tk.Label(f, text=f"  +{ach['points']} points",
+                     font=("Helvetica", 9),
+                     bg="#1e293b", fg="#94a3b8").pack(anchor="w")
+
+            popup.after(3500, popup.destroy)
+        except Exception:
+            pass   # never let a popup crash the game
+
+    def _show_popups_queued(self, achievements):
+        """Show a list of achievement popups, staggered and stacked."""
+        for i, ach in enumerate(achievements):
+            self.parent.after(i * 600,
+                              lambda a=ach, s=i: self._show_achievement_popup(a, s))
 
     # ============================================================= leaderboard
 
@@ -383,6 +505,22 @@ class BaseGame:
                 "streak":   self.streak,
                 "date":     datetime.date.today().isoformat(),
             })
+            # Record leaderboard position and check LB achievements
+            scores = _ss.get_scores(self.GAME_ID)
+            for i, sc in enumerate(scores):
+                if sc["name"] == name and sc["correct"] == self.correct:
+                    _as.record_lb_position(self.GAME_ID, i + 1)
+                    break
+            lb_earned = []
+            for ach_id in ("lb_top3", "lb_top1", "lb_triple"):
+                if _as.has(ach_id):
+                    continue
+                ach = ACHIEVEMENTS_BY_ID.get(ach_id)
+                if ach and ach["check"](_as.get_stats(), {}):
+                    if _as.earn(ach_id, ach["points"]):
+                        lb_earned.append(ach)
+            if lb_earned:
+                self._show_popups_queued(lb_earned)
             dlg.destroy()
             self.back_callback()
 
@@ -418,7 +556,6 @@ class BaseGame:
         win.geometry(f"560x420+{cx - 280}+{cy - 210}")
         win.resizable(False, False)
 
-        # Header bar
         hdr = tk.Frame(win, bg="#0f172a", padx=20, pady=14)
         hdr.pack(fill=tk.X)
         tk.Label(hdr, text=f"🏆  {self.TITLE}",
@@ -428,7 +565,6 @@ class BaseGame:
             tk.Label(win, text="No scores yet — play to set the first record!",
                      font=("Helvetica", 12), bg="#f8fafc", fg="#64748b").pack(expand=True)
         else:
-            # Column header row
             col_frame = tk.Frame(win, bg="#e2e8f0", padx=16, pady=6)
             col_frame.pack(fill=tk.X)
             for text, width in [("#", 4), ("Name", 18), ("Correct", 9),
@@ -437,9 +573,8 @@ class BaseGame:
                          font=("Helvetica", 9, "bold"),
                          bg="#e2e8f0", fg="#64748b").pack(side=tk.LEFT)
 
-            # Rows
             rows = tk.Frame(win, bg="white")
-            rows.pack(fill=tk.BOTH, expand=True, padx=0, pady=0)
+            rows.pack(fill=tk.BOTH, expand=True)
 
             medals = ["🥇", "🥈", "🥉"] + [f" {i}" for i in range(4, 11)]
             for i, s in enumerate(scores):
@@ -448,11 +583,11 @@ class BaseGame:
                 row.pack(fill=tk.X)
                 for val, width in [
                     (medals[i], 4),
-                    (s["name"],            18),
-                    (str(s["correct"]),     9),
-                    (f"{s['accuracy']}%",  10),
-                    (str(s.get("streak",0)), 8),
-                    (s.get("date", ""),    12),
+                    (s["name"],              18),
+                    (str(s["correct"]),       9),
+                    (f"{s['accuracy']}%",    10),
+                    (str(s.get("streak", 0)), 8),
+                    (s.get("date", ""),      12),
                 ]:
                     tk.Label(row, text=val, width=width, anchor="w",
                              font=("Helvetica", 10), bg=bg, fg="#0f172a").pack(side=tk.LEFT)
@@ -468,5 +603,5 @@ class BaseGame:
     def update_question_display(self):  raise NotImplementedError
     def correct_history_text(self, e):  raise NotImplementedError
     def wrong_history_text(self, g):    raise NotImplementedError
-    def get_question_dict(self):        return None   # opt-in; None = no tracking
+    def get_question_dict(self):        return None
     def _build_question_area(self, p):  raise NotImplementedError

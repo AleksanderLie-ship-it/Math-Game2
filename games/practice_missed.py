@@ -3,10 +3,10 @@ practice_missed.py
 ------------------
 Review game that draws exclusively from the student's missed-question store.
 
-Correct answer  → question is removed from the store (and from the session queue).
-Wrong answer    → question stays in the store; the student must try again later.
-Skip            → question moves to the back of the session queue (stays in store).
-Wipe All button → clears the entire store after a confirmation prompt.
+Correct answer  -> question removed from the store (and from the session queue).
+Wrong answer    -> question stays in the store; the student must try again.
+Skip            -> question moves to the back of the session queue (stays in store).
+Wipe All button -> clears the entire store after a confirmation prompt.
 
 When the queue is exhausted the game shows a completion screen.
 """
@@ -15,8 +15,10 @@ import random
 import tkinter as tk
 from tkinter import messagebox
 
-from .base_game   import BaseGame
-from .missed_store import store as _ms
+from .base_game          import BaseGame
+from .missed_store       import store as _ms
+from .achievements_store import store as _as
+from .achievements       import ACHIEVEMENTS_BY_ID
 
 
 def _fmt(n):
@@ -29,20 +31,33 @@ def _fmt(n):
 class PracticeMissed(BaseGame):
     TITLE         = "Practice — Missed Questions"
     SUBTITLE      = "Work through your wrong answers until the list is empty."
-    ALLOW_DECIMAL = True   # some division questions may need decimal input
+    ALLOW_DECIMAL = True
     GAME_ID       = None   # no leaderboard for review mode
 
-    # ----------------------------------------------------------------- init
+    # ------------------------------------------------------------------ init
 
     def __init__(self, parent, back_callback):
-        # Must set up queue BEFORE super().__init__ calls new_question()
-        self._queue: list      = list(_ms.get_all())
+        # Set up queue BEFORE super().__init__ calls new_question()
+        self._queue: list         = list(_ms.get_all())
         random.shuffle(self._queue)
         self._current_q: dict | None = None
         self._queue_empty: bool      = len(self._queue) == 0
+        self._pending_open_ach       = None   # awarded on open, shown after UI builds
+
+        # Award "Facing Fears" the first time Practice Missed is opened
+        if not _as.get_stats().get("missed_attempted", False):
+            _as.set_stat("missed_attempted", True)
+            ach = ACHIEVEMENTS_BY_ID.get("missed_attempted")
+            if ach and _as.earn(ach["id"], ach["points"]):
+                self._pending_open_ach = ach
+
         super().__init__(parent, back_callback)
 
-    # --------------------------------------------------------- question area
+        # Show the open-achievement popup now that the UI is ready
+        if self._pending_open_ach:
+            self.parent.after(500, lambda: self._show_achievement_popup(self._pending_open_ach))
+
+    # ---------------------------------------------------- question area
 
     def _build_question_area(self, parent):
         self.remaining_label = tk.Label(
@@ -67,7 +82,7 @@ class PracticeMissed(BaseGame):
         self._btn(btn_row, "🗑  Wipe All", self._wipe_all,
                   bg="white", fg="#b91c1c", border=True).pack(side=tk.LEFT, padx=(8, 0))
 
-    # ----------------------------------------------------------------- abstract
+    # ---------------------------------------------------------------- abstract
 
     def new_question(self):
         if self._queue:
@@ -83,20 +98,31 @@ class PracticeMissed(BaseGame):
     def update_question_display(self):
         if self._queue_empty:
             n = _ms.count()
-            self.question_label.configure(
-                text="All cleared! ✓" if n == 0 else "No missed questions yet."
-            )
-            self.remaining_label.configure(text="")
-            self.answer_entry.configure(state="disabled")
+            if n == 0:
+                self.question_label.configure(text="All cleared!")
+                self.remaining_label.configure(
+                    text="Every missed question answered correctly. Returning to menu..."
+                )
+                self.answer_entry.configure(state="disabled")
+                # Auto-return after 3 seconds (only schedule once)
+                if not getattr(self, "_return_scheduled", False):
+                    self._return_scheduled = True
+                    self.parent.after(3000, self._go_back)
+            else:
+                self.question_label.configure(text="No missed questions yet.")
+                self.remaining_label.configure(text="")
+                self.answer_entry.configure(state="disabled")
         else:
             self.answer_entry.configure(state="normal")
             q   = self._current_q
             cnt = _ms.count()
-            self.remaining_label.configure(text=f"{cnt} question{'s' if cnt != 1 else ''} remaining")
+            self.remaining_label.configure(
+                text=f"{cnt} question{'s' if cnt != 1 else ''} remaining"
+            )
             self.question_label.configure(text=f"{q['a']} {q['op']} {q['b']}")
 
     def get_question_dict(self):
-        return None     # never re-add to missed from within practice mode
+        return None   # never re-add to missed from within practice mode
 
     def correct_history_text(self, expected):
         if not self._current_q:
@@ -108,9 +134,9 @@ class PracticeMissed(BaseGame):
         if not self._current_q:
             return ""
         q = self._current_q
-        return f"{q['a']} {q['op']} {q['b']} ≠ {_fmt(float(given))}"
+        return f"{q['a']} {q['op']} {q['b']} != {_fmt(float(given))}"
 
-    # ---------------------------------------------------------- custom submit
+    # -------------------------------------------------- custom submit
 
     def handle_submit(self, event=None):
         """Fully overrides base: removes from store on correct, never re-adds."""
@@ -125,25 +151,41 @@ class PracticeMissed(BaseGame):
         except ValueError:
             return
 
-        expected  = self.get_expected()
+        expected   = self.get_expected()
         self.attempts += 1
 
         if self._answers_match(given, expected):
             self.correct += 1
             self.streak  += 1
-            _ms.remove(self._current_q)          # clear from persistent store
-            self._queue.pop(0)                   # remove from session queue
+            _ms.remove(self._current_q)
+            self._queue.pop(0)
+
+            # Achievement: Resilient (first missed question answered correctly)
+            newly_ach = []
+            if not _as.get_stats().get("missed_resilient", False):
+                _as.set_stat("missed_resilient", True)
+                ach = ACHIEVEMENTS_BY_ID.get("missed_resilient")
+                if ach and _as.earn(ach["id"], ach["points"]):
+                    newly_ach.append(ach)
 
             self.history.insert(0, {"text": self.correct_history_text(expected), "ok": True})
             self.history = self.history[:8]
 
-            # Special feedback when the last question is cleared
+            # Achievement: Clean Slate (all cleared)
             if not self._queue:
+                if not _as.get_stats().get("missed_cleared", False):
+                    _as.set_stat("missed_cleared", True)
+                    ach = ACHIEVEMENTS_BY_ID.get("missed_cleared")
+                    if ach and _as.earn(ach["id"], ach["points"]):
+                        newly_ach.append(ach)
                 self.show_feedback("correct", "✓  All questions cleared!  Great work!")
             else:
                 self.show_feedback("correct", "✓  Correct! Removed from missed list.")
 
             self.update_stats()
+            if newly_ach:
+                self._show_popups_queued(newly_ach)
+
             if self.feedback_after_id:
                 self.parent.after_cancel(self.feedback_after_id)
             self.feedback_after_id = self.parent.after(700, self._auto_next)
@@ -155,10 +197,10 @@ class PracticeMissed(BaseGame):
             self.answer_var.set("")
             self.update_stats()
 
-    # ----------------------------------------------------------- custom skip
+    # --------------------------------------------------- custom skip
 
     def skip_question(self):
-        """Move current question to the end of the queue (stays in store)."""
+        """Move current question to end of queue (stays in store)."""
         if self.feedback_after_id:
             self.parent.after_cancel(self.feedback_after_id)
             self.feedback_after_id = None
@@ -170,10 +212,10 @@ class PracticeMissed(BaseGame):
         self.update_question_display()
         self.answer_entry.focus_set()
 
-    # ---------------------------------------------------------- custom reset
+    # -------------------------------------------------- custom reset
 
     def reset_stats(self):
-        """Reload queue from store and reshuffle."""
+        self._return_scheduled = False
         if self.feedback_after_id:
             self.parent.after_cancel(self.feedback_after_id)
             self.feedback_after_id = None
@@ -192,9 +234,10 @@ class PracticeMissed(BaseGame):
         self.update_stats()
         self.answer_entry.focus_set()
 
-    # ------------------------------------------------------------- wipe all
+    # --------------------------------------------------------- wipe all
 
     def _wipe_all(self):
+        self._return_scheduled = False
         if not messagebox.askyesno(
             "Wipe All",
             f"This will permanently delete all {_ms.count()} missed question(s).\n\nAre you sure?",
