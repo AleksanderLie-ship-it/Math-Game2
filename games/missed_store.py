@@ -2,8 +2,7 @@
 missed_store.py
 ---------------
 Persists wrong answers across sessions so the student can review them later.
-Data is stored in %APPDATA%\\MathPractice\\missed.json (Windows)
-or ~/.MathPractice/missed.json (other platforms).
+Saved to <profile_dir>/missed.json
 
 Each entry is a dict:
   { "op": "×" | "÷", "a": int, "b": int,
@@ -14,19 +13,13 @@ Deduplication key: (op, a, b).
 # Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
 import json
-import os
 import pathlib
 
 
-def _path() -> pathlib.Path:
-    appdata = os.getenv("APPDATA")
-    base = pathlib.Path(appdata) if appdata else pathlib.Path.home() / ".MathPractice"
-    return pathlib.Path(base) / "MathPractice" / "missed.json"
-
-
 class MissedStore:
-    def __init__(self):
-        self._path = _path()
+    def __init__(self, profile_dir: pathlib.Path):
+        self._path = pathlib.Path(profile_dir) / "missed.json"
+        self._path.parent.mkdir(parents=True, exist_ok=True)
         self._data: list = []
         self._load()
 
@@ -44,7 +37,6 @@ class MissedStore:
 
     def _save(self):
         try:
-            self._path.parent.mkdir(parents=True, exist_ok=True)
             self._path.write_text(
                 json.dumps(self._data, indent=2, ensure_ascii=False),
                 encoding="utf-8",
@@ -79,7 +71,3 @@ class MissedStore:
     def clear(self):
         self._data = []
         self._save()
-
-
-# Module-level singleton — import this everywhere
-store = MissedStore()

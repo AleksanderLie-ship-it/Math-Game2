@@ -2,24 +2,17 @@
 scores_store.py
 ---------------
 Per-game top-10 leaderboards, persisted across sessions.
-Stored in %APPDATA%\\MathPractice\\scores.json.
+Saved to <profile_dir>/scores.json
 
 Schema:
   { "<game_id>": [ { "name", "correct", "attempts", "accuracy", "streak", "date" }, ... ] }
 
-Ranking: correct DESC → accuracy DESC → streak DESC.
+Ranking: correct DESC -> accuracy DESC -> streak DESC.
 """
 # Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
 import json
-import os
 import pathlib
-
-
-def _path() -> pathlib.Path:
-    appdata = os.getenv("APPDATA")
-    base = pathlib.Path(appdata) if appdata else pathlib.Path.home() / ".MathPractice"
-    return pathlib.Path(base) / "MathPractice" / "scores.json"
 
 
 def _sort_key(s: dict):
@@ -29,8 +22,9 @@ def _sort_key(s: dict):
 class ScoresStore:
     TOP_N = 10
 
-    def __init__(self):
-        self._path = _path()
+    def __init__(self, profile_dir: pathlib.Path):
+        self._path = pathlib.Path(profile_dir) / "scores.json"
+        self._path.parent.mkdir(parents=True, exist_ok=True)
         self._data: dict = {}
         self._load()
 
@@ -45,7 +39,6 @@ class ScoresStore:
 
     def _save(self):
         try:
-            self._path.parent.mkdir(parents=True, exist_ok=True)
             self._path.write_text(
                 json.dumps(self._data, indent=2, ensure_ascii=False),
                 encoding="utf-8",
@@ -73,7 +66,3 @@ class ScoresStore:
         bucket.append(entry)
         self._data[game_id] = sorted(bucket, key=_sort_key)[: self.TOP_N]
         self._save()
-
-
-# Module-level singleton
-store = ScoresStore()

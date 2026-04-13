@@ -16,10 +16,8 @@ import random
 import tkinter as tk
 from tkinter import messagebox
 
-from .base_game          import BaseGame
-from .missed_store       import store as _ms
-from .achievements_store import store as _as
-from .achievements       import ACHIEVEMENTS_BY_ID
+from .base_game    import BaseGame
+from .achievements import ACHIEVEMENTS_BY_ID
 
 
 def _fmt(n):
@@ -37,22 +35,22 @@ class PracticeMissed(BaseGame):
 
     # ------------------------------------------------------------------ init
 
-    def __init__(self, parent, back_callback):
+    def __init__(self, parent, back_callback, ach_store, missed_store, scores_store):
         # Set up queue BEFORE super().__init__ calls new_question()
-        self._queue: list         = list(_ms.get_all())
+        self._queue: list            = list(missed_store.get_all())
         random.shuffle(self._queue)
         self._current_q: dict | None = None
         self._queue_empty: bool      = len(self._queue) == 0
         self._pending_open_ach       = None   # awarded on open, shown after UI builds
 
         # Award "Facing Fears" the first time Practice Missed is opened
-        if not _as.get_stats().get("missed_attempted", False):
-            _as.set_stat("missed_attempted", True)
+        if not ach_store.get_stats().get("missed_attempted", False):
+            ach_store.set_stat("missed_attempted", True)
             ach = ACHIEVEMENTS_BY_ID.get("missed_attempted")
-            if ach and _as.earn(ach["id"], ach["points"]):
+            if ach and ach_store.earn(ach["id"], ach["points"]):
                 self._pending_open_ach = ach
 
-        super().__init__(parent, back_callback)
+        super().__init__(parent, back_callback, ach_store, missed_store, scores_store)
 
         # Show the open-achievement popup now that the UI is ready
         if self._pending_open_ach:
@@ -98,14 +96,13 @@ class PracticeMissed(BaseGame):
 
     def update_question_display(self):
         if self._queue_empty:
-            n = _ms.count()
+            n = self._ms.count()
             if n == 0:
                 self.question_label.configure(text="All cleared!")
                 self.remaining_label.configure(
                     text="Every missed question answered correctly. Returning to menu..."
                 )
                 self.answer_entry.configure(state="disabled")
-                # Auto-return after 3 seconds (only schedule once)
                 if not getattr(self, "_return_scheduled", False):
                     self._return_scheduled = True
                     self.parent.after(3000, self._go_back)
@@ -116,7 +113,7 @@ class PracticeMissed(BaseGame):
         else:
             self.answer_entry.configure(state="normal")
             q   = self._current_q
-            cnt = _ms.count()
+            cnt = self._ms.count()
             self.remaining_label.configure(
                 text=f"{cnt} question{'s' if cnt != 1 else ''} remaining"
             )
@@ -158,26 +155,24 @@ class PracticeMissed(BaseGame):
         if self._answers_match(given, expected):
             self.correct += 1
             self.streak  += 1
-            _ms.remove(self._current_q)
+            self._ms.remove(self._current_q)
             self._queue.pop(0)
 
-            # Achievement: Resilient (first missed question answered correctly)
             newly_ach = []
-            if not _as.get_stats().get("missed_resilient", False):
-                _as.set_stat("missed_resilient", True)
+            if not self._as.get_stats().get("missed_resilient", False):
+                self._as.set_stat("missed_resilient", True)
                 ach = ACHIEVEMENTS_BY_ID.get("missed_resilient")
-                if ach and _as.earn(ach["id"], ach["points"]):
+                if ach and self._as.earn(ach["id"], ach["points"]):
                     newly_ach.append(ach)
 
             self.history.insert(0, {"text": self.correct_history_text(expected), "ok": True})
             self.history = self.history[:8]
 
-            # Achievement: Clean Slate (all cleared)
             if not self._queue:
-                if not _as.get_stats().get("missed_cleared", False):
-                    _as.set_stat("missed_cleared", True)
+                if not self._as.get_stats().get("missed_cleared", False):
+                    self._as.set_stat("missed_cleared", True)
                     ach = ACHIEVEMENTS_BY_ID.get("missed_cleared")
-                    if ach and _as.earn(ach["id"], ach["points"]):
+                    if ach and self._as.earn(ach["id"], ach["points"]):
                         newly_ach.append(ach)
                 self.show_feedback("correct", "✓  All questions cleared!  Great work!")
             else:
@@ -224,7 +219,7 @@ class PracticeMissed(BaseGame):
         self.attempts = 0
         self.streak   = 0
         self.history  = []
-        self._queue        = list(_ms.get_all())
+        self._queue        = list(self._ms.get_all())
         random.shuffle(self._queue)
         self._queue_empty  = len(self._queue) == 0
         self._current_q    = None
@@ -241,11 +236,11 @@ class PracticeMissed(BaseGame):
         self._return_scheduled = False
         if not messagebox.askyesno(
             "Wipe All",
-            f"This will permanently delete all {_ms.count()} missed question(s).\n\nAre you sure?",
+            f"This will permanently delete all {self._ms.count()} missed question(s).\n\nAre you sure?",
             icon="warning",
         ):
             return
-        _ms.clear()
+        self._ms.clear()
         self._queue       = []
         self._queue_empty = True
         self._current_q   = None

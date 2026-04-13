@@ -24,10 +24,7 @@ import time as _time
 import tkinter as tk
 from tkinter import ttk
 
-from .missed_store       import store as _ms
-from .scores_store       import store as _ss
-from .achievements_store import store as _as
-from .achievements       import ACHIEVEMENTS, ACHIEVEMENTS_BY_ID
+from .achievements import ACHIEVEMENTS, ACHIEVEMENTS_BY_ID
 
 
 class BaseGame:
@@ -36,9 +33,14 @@ class BaseGame:
     ALLOW_DECIMAL = False
     GAME_ID       = None   # set in subclass to enable leaderboard
 
-    def __init__(self, parent, back_callback):
+    def __init__(self, parent, back_callback, ach_store, missed_store, scores_store):
         self.parent        = parent
         self.back_callback = back_callback
+
+        # Injected stores — profile-aware instances from profile_manager
+        self._as = ach_store
+        self._ms = missed_store
+        self._ss = scores_store
 
         self.correct           = 0
         self.attempts          = 0
@@ -302,7 +304,7 @@ class BaseGame:
             self.update_stats()
             q = self.get_question_dict()
             if q is not None:
-                _ms.add(q)
+                self._ms.add(q)
 
     def _auto_next(self):
         self.feedback_after_id = None
@@ -366,17 +368,17 @@ class BaseGame:
             "speed_demon":     speed_ok,
             "session_correct": self.correct,
         }
-        stats = _as.get_stats()
+        stats = self._as.get_stats()
 
         newly_earned = []
         for ach in ACHIEVEMENTS:
             if ach.get("when") != "live":
                 continue
-            if _as.has(ach["id"]):
+            if self._as.has(ach["id"]):
                 continue
             try:
                 if ach["check"](stats, ctx):
-                    if _as.earn(ach["id"], ach["points"]):
+                    if self._as.earn(ach["id"], ach["points"]):
                         newly_earned.append(ach)
             except Exception:
                 pass
@@ -394,24 +396,24 @@ class BaseGame:
         now             = datetime.datetime.now()
         session_minutes = (now - self._session_start).total_seconds() / 60.0
 
-        _as.record_session(
+        self._as.record_session(
             self.GAME_ID,
             self.correct, self.attempts, accuracy, self.streak,
             now.date().isoformat(), now.hour,
         )
 
-        stats = _as.get_stats()
+        stats = self._as.get_stats()
         ctx   = {"session_minutes": session_minutes}
 
         newly_earned = []
         for ach in ACHIEVEMENTS:
             if ach.get("when") != "end":
                 continue
-            if _as.has(ach["id"]):
+            if self._as.has(ach["id"]):
                 continue
             try:
                 if ach["check"](stats, ctx):
-                    if _as.earn(ach["id"], ach["points"]):
+                    if self._as.earn(ach["id"], ach["points"]):
                         newly_earned.append(ach)
             except Exception:
                 pass
@@ -464,7 +466,7 @@ class BaseGame:
     def _prompt_score_entry(self):
         """Show name-entry dialog if the session qualifies for top-10."""
         accuracy = round((self.correct / self.attempts) * 100) if self.attempts else 0
-        if not _ss.qualifies(self.GAME_ID, self.correct, accuracy, self.streak):
+        if not self._ss.qualifies(self.GAME_ID, self.correct, accuracy, self.streak):
             self.back_callback()
             return
 
@@ -498,7 +500,7 @@ class BaseGame:
 
         def _save(event=None):
             name = name_var.get().strip() or "Anonymous"
-            _ss.add_score(self.GAME_ID, {
+            self._ss.add_score(self.GAME_ID, {
                 "name":     name,
                 "correct":  self.correct,
                 "attempts": self.attempts,
@@ -507,18 +509,18 @@ class BaseGame:
                 "date":     datetime.date.today().isoformat(),
             })
             # Record leaderboard position and check LB achievements
-            scores = _ss.get_scores(self.GAME_ID)
+            scores = self._ss.get_scores(self.GAME_ID)
             for i, sc in enumerate(scores):
                 if sc["name"] == name and sc["correct"] == self.correct:
-                    _as.record_lb_position(self.GAME_ID, i + 1)
+                    self._as.record_lb_position(self.GAME_ID, i + 1)
                     break
             lb_earned = []
             for ach_id in ("lb_top3", "lb_top1", "lb_triple"):
-                if _as.has(ach_id):
+                if self._as.has(ach_id):
                     continue
                 ach = ACHIEVEMENTS_BY_ID.get(ach_id)
-                if ach and ach["check"](_as.get_stats(), {}):
-                    if _as.earn(ach_id, ach["points"]):
+                if ach and ach["check"](self._as.get_stats(), {}):
+                    if self._as.earn(ach_id, ach["points"]):
                         lb_earned.append(ach)
             if lb_earned:
                 self._show_popups_queued(lb_earned)
@@ -543,7 +545,7 @@ class BaseGame:
 
     def _show_leaderboard(self):
         """Display a top-10 table in a popup window."""
-        scores = _ss.get_scores(self.GAME_ID)
+        scores = self._ss.get_scores(self.GAME_ID)
 
         root = self.parent.winfo_toplevel()
         root.update_idletasks()

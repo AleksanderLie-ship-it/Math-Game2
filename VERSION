@@ -1,7 +1,34 @@
-0.3.0
+0.4.1
 
 CHANGELOG
 =========
+
+v0.4.1  (2026-04-13)
+--------------------
+- Added Settings screen (⚙ button on profile screen and in game menu)
+- Working settings:
+    Auto-login — skip profile screen, load last profile automatically on startup
+    Start maximized — open window fullscreen every time
+- Coming-soon placeholders visible but disabled: Dark mode, Sound effects, Language
+- Settings persisted globally to %APPDATA%\MathPractice\settings.json (not per-profile)
+- Note: update build.bat manually — change set VERSION=0.3.1 to set VERSION=0.4.1
+
+v0.4.0  (2026-04-13)
+--------------------
+- Added user profile system — multiple players on one install
+- New profile selection screen on launch (create, load, delete profiles)
+- Each profile has isolated save data in %APPDATA%\MathPractice\profiles\{name}\
+  (achievements, leaderboard scores, missed questions all separate per profile)
+- Active profile shown in game menu header with one-click profile switching
+- Refactored all three stores (AchievementsStore, MissedStore, ScoresStore)
+  to be path-aware — no more hardcoded global paths
+- Added profile_manager.py for profile CRUD and store instantiation
+- Copyright footer also shown on the profile selection screen
+
+v0.3.1  (2026-04-13)
+--------------------
+- Copyright notice added to all source files
+- Copyright footer added to main menu (version + © Aleksander Lie)
 
 v0.3.0  (2026-04-13)
 --------------------

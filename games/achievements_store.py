@@ -2,41 +2,40 @@
 achievements_store.py
 ---------------------
 Persistent store for earned achievements and global gameplay stats.
-Saved to %APPDATA%\\MathPractice\\achievements.json
+Saved to <profile_dir>/achievements.json
 """
 # Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
 import json
 import os
-
-_DIR  = os.path.join(os.environ.get("APPDATA", os.path.expanduser("~")), "MathPractice")
-_PATH = os.path.join(_DIR, "achievements.json")
+import pathlib
 
 _DEFAULT_STATS = {
     "total_correct":    0,
     "best_streak_ever": 0,
-    "days_played":      [],   # ISO date strings
-    "games_played":     [],   # game_id strings
-    "per_game":         {},   # game_id -> {sessions, best_accuracy, best_correct, best_attempts}
+    "days_played":      [],
+    "games_played":     [],
+    "per_game":         {},
     "missed_attempted": False,
     "missed_cleared":   False,
     "missed_resilient": False,
-    "lb_positions":     {},   # game_id -> best position achieved (1 = first place)
+    "lb_positions":     {},
     "night_owl":        False,
     "early_bird":       False,
 }
 
 
 class AchievementsStore:
-    def __init__(self):
-        os.makedirs(_DIR, exist_ok=True)
+    def __init__(self, profile_dir: pathlib.Path):
+        self._path = pathlib.Path(profile_dir) / "achievements.json"
+        self._path.parent.mkdir(parents=True, exist_ok=True)
         self._data = self._load()
 
     # ------------------------------------------------------------------ I/O
 
     def _load(self):
         try:
-            with open(_PATH, encoding="utf-8") as f:
+            with open(self._path, encoding="utf-8") as f:
                 d = json.load(f)
             d.setdefault("earned", [])
             d.setdefault("points", 0)
@@ -48,7 +47,7 @@ class AchievementsStore:
             return {"earned": [], "points": 0, "stats": dict(_DEFAULT_STATS)}
 
     def _save(self):
-        with open(_PATH, "w", encoding="utf-8") as f:
+        with open(self._path, "w", encoding="utf-8") as f:
             json.dump(self._data, f, indent=2, ensure_ascii=False)
 
     # ---------------------------------------------------------------- queries
@@ -123,6 +122,3 @@ class AchievementsStore:
         """Set a single stat flag (e.g. missed_attempted)."""
         self._data["stats"][key] = value
         self._save()
-
-
-store = AchievementsStore()
