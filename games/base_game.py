@@ -146,6 +146,28 @@ class BaseGame:
                                         anchor="w", padx=14, pady=10)
         self.feedback_label.pack(fill=tk.X)
 
+        # Scratch pad
+        tk.Frame(body, bg="#e2e8f0", height=1).pack(fill=tk.X, pady=(8, 0))
+        scratch_hdr = tk.Frame(body, bg="white")
+        scratch_hdr.pack(fill=tk.X, pady=(6, 4))
+        tk.Label(scratch_hdr, text="✏  Scratch pad",
+                 font=("Helvetica", 10, "bold"),
+                 bg="white", fg="#64748b").pack(side=tk.LEFT)
+        tk.Button(scratch_hdr, text="Clear",
+                  font=("Helvetica", 8), bg="white", fg="#94a3b8",
+                  relief="flat", bd=0, cursor="hand2",
+                  activebackground="white", activeforeground="#475569",
+                  command=lambda: self._scratch.delete("1.0", tk.END)).pack(side=tk.RIGHT)
+        self._scratch = tk.Text(body, font=("Courier", 12),
+                                bg="#fafaf7", fg="#1e293b",
+                                relief="solid", bd=1,
+                                highlightthickness=0,
+                                wrap=tk.WORD,
+                                height=6,
+                                padx=10, pady=8,
+                                insertbackground="#1e293b")
+        self._scratch.pack(fill=tk.BOTH, expand=True, pady=(0, 4))
+
     def _build_right(self, parent):
         card = self._card(parent)
         card.pack(fill=tk.BOTH, expand=True)

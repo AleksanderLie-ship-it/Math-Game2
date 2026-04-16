@@ -1,7 +1,16 @@
-0.5.0
+0.5.1
 
 CHANGELOG
 =========
+
+v0.5.1  (2026-04-16)
+--------------------
+- Added scratch pad to all game screens
+    Text area below the answer buttons for partial calculations and working notes
+    Monospace font (Courier 12) on off-white background for a paper-like feel
+    "Clear" button to wipe it between questions
+    Persists within a session but is not saved — purely a working surface
+    Lives in base_game.py so all game modes inherit it automatically
 
 v0.5.0  (2026-04-16)
 --------------------
