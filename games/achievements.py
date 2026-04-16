@@ -26,6 +26,8 @@ Each achievement dict:
 GAME_IDS = [
     "mult_basic", "mult_intermediate", "mult_advanced",
     "div_basic",  "div_intermediate",  "div_advanced",
+    "frac_basic", "frac_intermediate", "frac_advanced",
+    "conv_basic", "conv_intermediate", "conv_advanced",
 ]
 
 GAME_NAMES = {
@@ -35,6 +37,12 @@ GAME_NAMES = {
     "div_basic":         "Division: Beginner",
     "div_intermediate":  "Division: Intermediate",
     "div_advanced":      "Division: Advanced",
+    "frac_basic":        "Fractions: Beginner",
+    "frac_intermediate": "Fractions: Intermediate",
+    "frac_advanced":     "Fractions: Advanced",
+    "conv_basic":        "Conversions: Beginner",
+    "conv_intermediate": "Conversions: Intermediate",
+    "conv_advanced":     "Conversions: Advanced",
 }
 
 GAME_SHORT = {
@@ -44,6 +52,12 @@ GAME_SHORT = {
     "div_basic":         "Div. Beginner",
     "div_intermediate":  "Div. Intermediate",
     "div_advanced":      "Div. Advanced",
+    "frac_basic":        "Frac. Beginner",
+    "frac_intermediate": "Frac. Intermediate",
+    "frac_advanced":     "Frac. Advanced",
+    "conv_basic":        "Conv. Beginner",
+    "conv_intermediate": "Conv. Intermediate",
+    "conv_advanced":     "Conv. Advanced",
 }
 
 # Which achievement unlocks each intermediate / advanced game
@@ -52,6 +66,10 @@ UNLOCK_REQUIREMENTS = {
     "mult_advanced":     "sharp_mult_intermediate",
     "div_intermediate":  "sharp_div_basic",
     "div_advanced":      "sharp_div_intermediate",
+    "frac_intermediate": "sharp_frac_basic",
+    "frac_advanced":     "sharp_frac_intermediate",
+    "conv_intermediate": "sharp_conv_basic",
+    "conv_advanced":     "sharp_conv_intermediate",
 }
 
 
@@ -197,17 +215,49 @@ def _build_achievements():
              check=lambda s, c: len(s.get("games_played", [])) >= 3),
 
         dict(id="explore_all", name="Well Rounded",  icon="🌐",
-             desc="Play all 6 main games at least once.",
+             desc="Play all 6 arithmetic games at least once.",
              points=100, hidden=False, category="Exploration", when="end",
-             check=lambda s, c: len(s.get("games_played", [])) >= 6),
+             check=lambda s, c: all(
+                 gid in s.get("games_played", [])
+                 for gid in ["mult_basic", "mult_intermediate", "mult_advanced",
+                              "div_basic",  "div_intermediate",  "div_advanced"]
+             )),
 
         dict(id="master_all",  name="Master of All", icon="👑",
-             desc="Achieve 80%+ accuracy in all 6 main games.",
+             desc="Achieve 80%+ accuracy in all 6 arithmetic games.",
              points=500, hidden=False, category="Exploration", when="end",
              check=lambda s, c: all(
                  _pg(s, gid, "best_accuracy") >= 80
                  and _pg(s, gid, "best_attempts") >= 10
-                 for gid in GAME_IDS
+                 for gid in ["mult_basic", "mult_intermediate", "mult_advanced",
+                              "div_basic",  "div_intermediate",  "div_advanced"]
+             )),
+
+        # ── Fraction cross-game ────────────────────────────────────────────────
+        dict(id="fraction_fan", name="Fraction Fan", icon="🍕",
+             desc="Achieve Sharp in any Fractions: Operations game.",
+             points=100, hidden=False, category="Exploration", when="end",
+             check=lambda s, c: any(
+                 _pg(s, gid, "best_accuracy") >= 80
+                 and _pg(s, gid, "best_attempts") >= 10
+                 for gid in ["frac_basic", "frac_intermediate", "frac_advanced"]
+             )),
+
+        dict(id="common_ground", name="Common Ground", icon="🔢",
+             desc="Play all 3 Fractions: Operations games at least once.",
+             points=75, hidden=False, category="Exploration", when="end",
+             check=lambda s, c: all(
+                 gid in s.get("games_played", [])
+                 for gid in ["frac_basic", "frac_intermediate", "frac_advanced"]
+             )),
+
+        dict(id="converter", name="Converter", icon="🔄",
+             desc="Achieve Sharp in any Conversions game.",
+             points=100, hidden=False, category="Exploration", when="end",
+             check=lambda s, c: any(
+                 _pg(s, gid, "best_accuracy") >= 80
+                 and _pg(s, gid, "best_attempts") >= 10
+                 for gid in ["conv_basic", "conv_intermediate", "conv_advanced"]
              )),
     ]
 

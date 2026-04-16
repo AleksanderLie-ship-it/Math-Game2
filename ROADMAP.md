@@ -1,7 +1,7 @@
 # Math Practice — Product Roadmap
 ## Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
-Current version: **v0.3.1**
+Current version: **v0.5.0**
 Target: word-of-mouth sellable at 199 NOK to Norwegian parents/homeschool networks
 
 ---
@@ -113,6 +113,16 @@ Retroactively makes every achievement feel more meaningful.
 ---
 
 ## Parking Lot (post-1.0, evaluate based on feedback)
+
+- **Fraction answer scoring: require reduced form + tiered points**
+  For conversion games asking for a fraction answer, reject unreduced forms
+  (e.g. 80/100 when 4/5 is expected) with feedback "correct value — simplify it."
+  Set `REQUIRE_REDUCED = True` on conversion game classes; add the check in
+  `FractionBase._answers_match` comparing `given.denominator == expected.denominator`.
+  Separately, consider a session "score" system (distinct from the correct/accuracy
+  counters) that weights streak, speed, and answer quality — this is the right
+  architectural home for point bonuses, rather than bolting it onto the current
+  leaderboard schema.
 
 - Addition and subtraction game modes (younger age bracket)
 - Natural science quiz mode (Aleks already teaches this to Phillip)

@@ -10,7 +10,7 @@ To add a new game:
 """
 # Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
-__version__ = "0.4.1"
+__version__ = "0.5.0"
 
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -21,6 +21,12 @@ from games.mult_advanced      import MultiplicationAdvanced
 from games.div_basic          import DivisionBasic
 from games.div_intermediate   import DivisionIntermediate
 from games.div_advanced       import DivisionAdvanced
+from games.frac_basic         import FracBasic
+from games.frac_intermediate  import FracIntermediate
+from games.frac_advanced      import FracAdvanced
+from games.conv_basic         import ConvBasic
+from games.conv_intermediate  import ConvIntermediate
+from games.conv_advanced      import ConvAdvanced
 from games.practice_missed    import PracticeMissed
 from games.profile_manager    import (
     list_profiles, create_profile, delete_profile, load_stores, last_profile,
@@ -96,6 +102,70 @@ CATEGORIES = [
                 "badge_fg": "#b91c1c",
                 "cls":      DivisionAdvanced,
                 "game_id":  "div_advanced",
+            },
+        ],
+    },
+    {
+        "label": "Fractions — Operations",
+        "games": [
+            {
+                "name":     "Beginner",
+                "desc":     "Same-denominator +/−.\nLike 1/3 + 1/3 = 2/3.",
+                "badge":    "Beginner",
+                "badge_bg": "#f0fdf4",
+                "badge_fg": "#15803d",
+                "cls":      FracBasic,
+                "game_id":  "frac_basic",
+            },
+            {
+                "name":     "Intermediate",
+                "desc":     "Different denominators.\nFind the common denominator first.",
+                "badge":    "Intermediate",
+                "badge_bg": "#fffbeb",
+                "badge_fg": "#b45309",
+                "cls":      FracIntermediate,
+                "game_id":  "frac_intermediate",
+            },
+            {
+                "name":     "Advanced",
+                "desc":     "Mixed numbers +/−.\nLike 1 1/2 + 2 1/4 = 3 3/4.",
+                "badge":    "Advanced",
+                "badge_bg": "#fef2f2",
+                "badge_fg": "#b91c1c",
+                "cls":      FracAdvanced,
+                "game_id":  "frac_advanced",
+            },
+        ],
+    },
+    {
+        "label": "Fractions — Conversions",
+        "games": [
+            {
+                "name":     "Beginner",
+                "desc":     "Fractions ↔ decimals.\nLike 3/4 = 0.75.",
+                "badge":    "Beginner",
+                "badge_bg": "#f0fdf4",
+                "badge_fg": "#15803d",
+                "cls":      ConvBasic,
+                "game_id":  "conv_basic",
+            },
+            {
+                "name":     "Intermediate",
+                "desc":     "Fractions ↔ percentages.\nLike 1/4 = 25%.",
+                "badge":    "Intermediate",
+                "badge_bg": "#fffbeb",
+                "badge_fg": "#b45309",
+                "cls":      ConvIntermediate,
+                "game_id":  "conv_intermediate",
+            },
+            {
+                "name":     "Advanced",
+                "desc":     "All three directions.\nFraction, decimal, percentage.",
+                "badge":    "Advanced",
+                "badge_bg": "#fef2f2",
+                "badge_fg": "#b91c1c",
+                "cls":      ConvAdvanced,
+                "game_id":  "conv_advanced",
             },
         ],
     },

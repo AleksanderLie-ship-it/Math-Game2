@@ -1,7 +1,26 @@
-0.4.1
+0.5.0
 
 CHANGELOG
 =========
+
+v0.5.0  (2026-04-16)
+--------------------
+- Added Fractions — Operations category (3 tiers):
+    Beginner:      same-denominator addition/subtraction (denominators 2–10)
+    Intermediate:  different denominators (one a multiple of the other)
+    Advanced:      mixed numbers addition/subtraction
+- Added Fractions — Conversions category (3 tiers):
+    Beginner:      fraction ↔ decimal (clean denominators: 2, 4, 5, 8, 10)
+    Intermediate:  fraction ↔ percentage (integer %)
+    Advanced:      all three directions (fraction/decimal/percentage)
+- New frac_base.py: FractionBase class with fraction-aware input parsing
+    Accepts "3/4", "1 3/4" (mixed number), "0.75", "75" in single text entry
+    Uses Python fractions.Fraction for exact equivalence checking
+    ANSWER_FORMAT instance variable controls expected answer type per question
+- 6 new game IDs added to achievements.py with full Sharp/Precise/Flawless suite
+- 3 new cross-game achievements: Fraction Fan, Common Ground, Converter
+- Unlock requirements: each Intermediate/Advanced tier locked behind Sharp in previous
+- Note: update build.bat manually — change set VERSION=0.4.1 to set VERSION=0.5.0
 
 v0.4.1  (2026-04-13)
 --------------------
