@@ -1,7 +1,22 @@
-0.5.1
+0.5.2
 
 CHANGELOG
 =========
+
+v0.5.2  (2026-04-16)
+--------------------
+- Layout refactor: question area now expands to fill available vertical space
+    Question box (q_area) takes all remaining height above the controls
+    Controls (entry, buttons, feedback, scratch pad) stay compact at the bottom
+    Eliminates dead space between buttons and scratch pad
+- Scratch pad is now fixed height (5 lines) in the compact controls zone
+- Right stats panel widened from 290px to 310px — reduces label crowding
+- Avatar assets organised into thematic category folders under assets/avatars/:
+    Scholar_Arcane (24), Hero_Honour (20), Nature_Spirit (20),
+    Shadow_Stealth (16), Wild_Fierce (8), Dark_Arts (8), Craftsman (4)
+    Borders (11 ornate frames), Item_Frames (16 UI frames)
+    Female avatars removed from working set (retained in source pack for later)
+- Roadmap v0.8.0 updated with full avatar system design and asset inventory
 
 v0.5.1  (2026-04-16)
 --------------------

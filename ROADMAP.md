@@ -70,16 +70,35 @@ All data already exists in JSON — this is purely a display layer.
 
 ---
 
-### v0.8.0 — Shop & Cosmetics
+### v0.8.0 — Shop & Cosmetics (including Avatar System)
 **Why here:** Gives achievement points actual spending weight.
 Retroactively makes every achievement feel more meaningful.
 
 - Spend points on:
   - Color themes (Dark mode, Warm/amber, Classic light)
-  - Avatar/icon shown in profile header
+  - Avatar/icon shown in profile header and beside game question
+  - Avatar border frame (unlockable overlay on the portrait)
   - Bonus XP multiplier (2× points for one session)
 - Theme applied globally, persisted per profile in settings.json
 - Dark mode is the priority unlock — highest perceived value
+
+**Avatar system design (assets already downloaded and organised):**
+- Asset source: AI portrait pack — 100 male portraits, 4 races × 25 professions
+- Organised into thematic packs in `assets/avatars/`:
+  - **Scholar & Arcane** (24): Wizard, Alchemist, Sorcerer, Illusionist, Enchanter, Artificer
+  - **Hero & Honour** (20): Knight, Paladin, Warrior, Samurai, Gladiator
+  - **Nature & Spirit** (20): Druid, Ranger, Cleric, Monk, Bard
+  - **Shadow & Stealth** (16): Assassin, Ninja, Thief, Pirate
+  - **Wild & Fierce** (8): Barbarian, Berserker
+  - **Dark Arts** (8): Necromancer, Summoner
+  - **Craftsman** (4): Blacksmith (all 4 races)
+- 11 ornate fantasy border frames in `assets/borders/` (Avatar Kit frames)
+- 16 UI-style item frames in `assets/item_frames/` (Item Frame Kit)
+- Store unlock tiers: 1 free avatar on profile creation, packs unlock by spending points
+- Preprocessing: resize from 2048×2048 → 256×256 before bundling (one script, run once)
+- Bundled into exe via PyInstaller `--add-data "assets;assets"` flag
+- Path resolution via `assets_path()` utility (works in both dev and packaged builds)
+- Female avatars available in the source pack — deferred, add in later update if requested
 
 ---
 

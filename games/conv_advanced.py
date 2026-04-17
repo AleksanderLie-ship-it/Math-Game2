@@ -70,9 +70,9 @@ class ConvAdvanced(FractionBase):
     def _build_question_area(self, parent):
         q_box = tk.Frame(parent, bg="white",
                          highlightbackground="#e2e8f0", highlightthickness=1)
-        q_box.pack(fill=tk.X, pady=(0, 18))
+        q_box.pack(fill=tk.BOTH, expand=True)
         inner = tk.Frame(q_box, bg="white", padx=24, pady=18)
-        inner.pack(fill=tk.X)
+        inner.pack(fill=tk.BOTH, expand=True)
 
         self.prompt_label = tk.Label(inner, text="",
                                      font=("Helvetica", 11),

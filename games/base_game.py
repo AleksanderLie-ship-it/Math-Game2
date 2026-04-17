@@ -81,12 +81,14 @@ class BaseGame:
         main = tk.Frame(self.parent, bg="#f8fafc", padx=24, pady=4)
         main.pack(fill=tk.BOTH, expand=True)
 
-        left = tk.Frame(main, bg="#f8fafc")
-        left.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 14))
-
-        right = tk.Frame(main, bg="#f8fafc", width=290)
+        # RIGHT must be packed first so it reserves its fixed width before
+        # the expanding left panel consumes all available space.
+        right = tk.Frame(main, bg="#f8fafc", width=370)
         right.pack(side=tk.RIGHT, fill=tk.Y)
         right.pack_propagate(False)
+
+        left = tk.Frame(main, bg="#f8fafc")
+        left.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 14))
 
         self._build_left(left)
         self._build_right(right)
@@ -110,25 +112,32 @@ class BaseGame:
 
         tk.Frame(card, bg="#e2e8f0", height=1).pack(fill=tk.X)
 
-        body = tk.Frame(card, bg="white", padx=24, pady=18)
+        body = tk.Frame(card, bg="white", padx=24, pady=14)
         body.pack(fill=tk.BOTH, expand=True)
 
-        self._build_question_area(body)
+        # ── TOP: question area — expands to fill available vertical space ──────
+        q_area = tk.Frame(body, bg="white")
+        q_area.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        self._build_question_area(q_area)
+
+        # ── BOTTOM: controls — compact, fixed at the bottom of the card ────────
+        ctrl = tk.Frame(body, bg="white")
+        ctrl.pack(fill=tk.X)
 
         # Answer entry
         self.answer_var = tk.StringVar()
         self.answer_var.trace("w", self._validate_input)
-        self.answer_entry = tk.Entry(body, textvariable=self.answer_var,
+        self.answer_entry = tk.Entry(ctrl, textvariable=self.answer_var,
                                      font=("Helvetica", 22), justify="center",
                                      relief="solid", bd=1, fg="#0f172a",
                                      highlightthickness=0)
-        self.answer_entry.pack(fill=tk.X, ipady=10, pady=(0, 14))
+        self.answer_entry.pack(fill=tk.X, ipady=10, pady=(0, 10))
         self.answer_entry.bind("<Return>", self.handle_submit)
         self.answer_entry.focus_set()
 
         # Buttons
-        btn_row = tk.Frame(body, bg="white")
-        btn_row.pack(fill=tk.X, pady=(0, 12))
+        btn_row = tk.Frame(ctrl, bg="white")
+        btn_row.pack(fill=tk.X, pady=(0, 8))
         self._btn(btn_row, "Check Answer", self.handle_submit,
                   bg="#0f172a", fg="white").pack(side=tk.LEFT, padx=(0, 8))
         self._btn(btn_row, "Skip", self.skip_question,
@@ -138,18 +147,18 @@ class BaseGame:
         self._add_extra_buttons(btn_row)
 
         # Feedback strip
-        self.feedback_frame = tk.Frame(body, bg="white")
+        self.feedback_frame = tk.Frame(ctrl, bg="white")
         self.feedback_frame.pack(fill=tk.X)
         self.feedback_label = tk.Label(self.feedback_frame, text="",
                                         font=("Helvetica", 12, "bold"),
                                         bg="white", fg="white",
-                                        anchor="w", padx=14, pady=10)
+                                        anchor="w", padx=14, pady=6)
         self.feedback_label.pack(fill=tk.X)
 
         # Scratch pad
-        tk.Frame(body, bg="#e2e8f0", height=1).pack(fill=tk.X, pady=(8, 0))
-        scratch_hdr = tk.Frame(body, bg="white")
-        scratch_hdr.pack(fill=tk.X, pady=(6, 4))
+        tk.Frame(ctrl, bg="#e2e8f0", height=1).pack(fill=tk.X, pady=(6, 0))
+        scratch_hdr = tk.Frame(ctrl, bg="white")
+        scratch_hdr.pack(fill=tk.X, pady=(5, 3))
         tk.Label(scratch_hdr, text="✏  Scratch pad",
                  font=("Helvetica", 10, "bold"),
                  bg="white", fg="#64748b").pack(side=tk.LEFT)
@@ -158,15 +167,15 @@ class BaseGame:
                   relief="flat", bd=0, cursor="hand2",
                   activebackground="white", activeforeground="#475569",
                   command=lambda: self._scratch.delete("1.0", tk.END)).pack(side=tk.RIGHT)
-        self._scratch = tk.Text(body, font=("Courier", 12),
+        self._scratch = tk.Text(ctrl, font=("Courier", 12),
                                 bg="#fafaf7", fg="#1e293b",
                                 relief="solid", bd=1,
                                 highlightthickness=0,
                                 wrap=tk.WORD,
-                                height=6,
+                                height=5,
                                 padx=10, pady=8,
                                 insertbackground="#1e293b")
-        self._scratch.pack(fill=tk.BOTH, expand=True, pady=(0, 4))
+        self._scratch.pack(fill=tk.X, pady=(0, 4))
 
     def _build_right(self, parent):
         card = self._card(parent)
@@ -214,8 +223,8 @@ class BaseGame:
                          activebackground=bg, activeforeground=fg)
 
     def _stat_box(self, parent, label, value, row, col):
-        f = tk.Frame(parent, bg="#f8fafc", padx=12, pady=10)
-        f.grid(row=row, column=col, padx=4, pady=4, sticky="nsew")
+        f = tk.Frame(parent, bg="#f8fafc", padx=8, pady=10)
+        f.grid(row=row, column=col, padx=3, pady=3, sticky="nsew")
         tk.Label(f, text=label, font=("Helvetica", 9),
                  bg="#f8fafc", fg="#64748b").pack(anchor="w")
         val = tk.Label(f, text=value, font=("Helvetica", 20, "bold"),

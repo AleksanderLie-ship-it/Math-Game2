@@ -10,7 +10,7 @@ To add a new game:
 """
 # Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
-__version__ = "0.5.0"
+__version__ = "0.5.2"
 
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -178,8 +178,8 @@ class App:
     def __init__(self, root):
         self.root = root
         self.root.title(f"Math Practice  v{__version__}")
-        self.root.geometry("960x680")
-        self.root.minsize(700, 480)
+        self.root.geometry("1080x720")
+        self.root.minsize(920, 560)
         self.root.configure(bg="#f8fafc")
         self._apply_styles()
 
