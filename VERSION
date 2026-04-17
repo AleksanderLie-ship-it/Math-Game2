@@ -88,6 +88,16 @@ v0.7.0  (2026-04-17)
   (canvas.bbox on hidden probe text), so the pill now wraps tightly around
   "Tip + body" and centres on the canvas. Reusable pattern for future packs.
 
+- Bugfix: latent v0.6.0 regression surfaced. The frac_* and conv_* game
+  classes override __init__ and did not accept/forward sessions_store, so
+  launching any of the six crashed with TypeError: unexpected keyword
+  argument 'sessions_store'. (mult_* and div_* don't override __init__, so
+  they inherit BaseGame's signature and were unaffected — that's why only
+  Fractions / Conversions were broken.) Added `sessions_store=None` to each
+  of the six subclass __init__ signatures and forwarded it in the super()
+  call. v0.6.0 only exercised mult/div in QA, so nobody hit this until
+  the latest Fractions session was opened post-v0.7.0 build.
+
 - Note: update build.bat manually — change set VERSION=0.6.1 to set VERSION=0.7.0
 
 v0.6.1  (2026-04-17)

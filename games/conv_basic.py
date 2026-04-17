@@ -47,12 +47,14 @@ class ConvBasic(FractionBase):
 
     # ──────────────────────────────────────────────────── init ────────────────
 
-    def __init__(self, parent, back_callback, ach_store, missed_store, scores_store):
+    def __init__(self, parent, back_callback, ach_store, missed_store, scores_store,
+                 sessions_store=None):
         self._frac      = Fraction(3, 4)
         self._dec_str   = "0.75"
         self._direction = "to_decimal"   # "to_decimal" or "to_fraction"
         self._expected  = Fraction(3, 4)
-        super().__init__(parent, back_callback, ach_store, missed_store, scores_store)
+        super().__init__(parent, back_callback, ach_store, missed_store, scores_store,
+                         sessions_store=sessions_store)
 
     # ──────────────────────────────────────────── question area layout ─────────
 

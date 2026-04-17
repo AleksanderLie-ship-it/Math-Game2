@@ -25,12 +25,14 @@ class FracBasic(FractionBase):
 
     # ──────────────────────────────────────────────────── init ────────────────
 
-    def __init__(self, parent, back_callback, ach_store, missed_store, scores_store):
+    def __init__(self, parent, back_callback, ach_store, missed_store, scores_store,
+                 sessions_store=None):
         self._num_a    = Fraction(1, 2)
         self._num_b    = Fraction(1, 4)
         self._op       = "+"
         self._expected = Fraction(3, 4)
-        super().__init__(parent, back_callback, ach_store, missed_store, scores_store)
+        super().__init__(parent, back_callback, ach_store, missed_store, scores_store,
+                         sessions_store=sessions_store)
 
     # ──────────────────────────────────────────── question area layout ─────────
 

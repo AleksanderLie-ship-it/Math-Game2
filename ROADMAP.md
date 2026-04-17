@@ -134,6 +134,13 @@ it turns drill data into a language teachers and parents already trust.
 **Why here:** Makes the product a teaching tool, not just a quiz.
 Significant differentiator for the 199 NOK price point.
 
+**Known bugs, yet to be fixed**
+Conversions: Intermediate 
+ - Convert to fraction: 38% -> answer key 19/50 and 38/100 gets logged and flagged as wrong answer. 
+ - Convert to fraction: 33% -> wrong anser for 33/100, correct for 1/3. Rounding error but should be more consistent. 
+Conversion: Advanced
+ - Convert to decimal: 38% -> answer key 0.38 gets logged and flagged as wrong answer. 
+
 **What shipped in v0.7.0:**
 - `games/tutorials/` package with the full architecture
   (see VERSION changelog for module layout and the 4-name content contract
@@ -150,6 +157,15 @@ Significant differentiator for the 199 NOK price point.
   `draw_centered_expression`, `draw_note`, `draw_arrow`, `draw_pill`
 
 **What's left in v0.7.x — tutorial content packs.**
+
+FIRST of all, fix the bugs listed. 
+
+Also NEXT Priority is total revamp of the fraction operations games, now beginner says on the card same denominator, but in game shows quesitons like 1/3 - 1/6, clear violation. 
+This should be reserved for intermediate, which means intermediate is good - as is. 
+Advanced tier is total flunk and should not look like that, should be revamped to instead consist of more complex numerator and denominators.
+i.e. number not ONLY between 1 and 10
+
+THEN we can do tutorial cards
 
 Each of the following needs a `tutorial_<game_id>.py` module following the
 same shape as `tutorial_div_basic.py`, plus one line in
@@ -190,6 +206,10 @@ are the primary LK20 5. trinn differentiator.
 - Optional: one "shared" tutorial entry point for Fractions that mixes
   operations and conversions slides into a single guided tour. Parent
   feedback will tell us if that's needed.
+- Needed: More variation in the fraction conversion game, player test reveals too much repetition, at least for advanced mode. 
+  Advanced mode should build upon both beginner and 
+  intermediate modes.
+
 
 **Implementation notes for whoever picks this up (future Claude, read these before writing any slide code):**
 - Canvas is a fixed 720x340. Anything that might reach x>720 or y>340
@@ -250,6 +270,10 @@ Retroactively makes every achievement feel more meaningful.
 ### v0.9.0 — Polish & Pre-Release
 **Why here:** Visual and UX pass before any public distribution.
 
+- Credits screen (accessible from main menu or about button)
+  - Asset credits: bavka (https://itch.io/profile/bavka) -- avatar portraits and UI frames
+  - Creative input & prompt engineering: Magnus Landaas
+  - Developer: Aleksander Lie
 - Custom app icon (.ico file, shown in taskbar and exe)
 - Better typography — consistent font sizing across all screens
 - Inno Setup installer wrapping the PyInstaller exe
