@@ -33,7 +33,8 @@ class BaseGame:
     ALLOW_DECIMAL = False
     GAME_ID       = None   # set in subclass to enable leaderboard
 
-    def __init__(self, parent, back_callback, ach_store, missed_store, scores_store):
+    def __init__(self, parent, back_callback, ach_store, missed_store, scores_store,
+                 sessions_store=None):
         self.parent        = parent
         self.back_callback = back_callback
 
@@ -41,6 +42,7 @@ class BaseGame:
         self._as = ach_store
         self._ms = missed_store
         self._ss = scores_store
+        self._sess = sessions_store
 
         self.correct           = 0
         self.attempts          = 0
@@ -432,6 +434,21 @@ class BaseGame:
             self.correct, self.attempts, accuracy, self.streak,
             now.date().isoformat(), now.hour,
         )
+
+        # Append a full history record for the Progress & Stats screen
+        if self._sess is not None:
+            try:
+                self._sess.record(
+                    game_id=self.GAME_ID or "",
+                    correct=self.correct,
+                    attempts=self.attempts,
+                    accuracy=accuracy,
+                    streak=self.streak,
+                    minutes=session_minutes,
+                    ts=self._session_start,
+                )
+            except Exception:
+                pass  # never let logging crash the game
 
         stats = self._as.get_stats()
         ctx   = {"session_minutes": session_minutes}

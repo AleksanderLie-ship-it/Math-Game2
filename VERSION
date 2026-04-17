@@ -1,7 +1,64 @@
-0.5.2
+0.6.1
 
 CHANGELOG
 =========
+
+v0.6.1  (2026-04-17)
+--------------------
+- PDF parent report reworked into a 3-page professional report in Norwegian:
+    Page 1 (Oppsummering):
+        Header, 4 summary tiles, 14-day bar chart,
+        auto-generated narrative paragraph ("Vurdering"),
+        next-focus recommendation strip
+    Page 2 (Detaljert oversikt):
+        Per-tier breakdown (Nybegynner / Mellomnivå / Viderekommen)
+        Difficulty distribution bar (share of attempts per tier, stacked)
+        Per-game summary table: økter, riktige, forsøk, snitt, best rekke, sist
+    Page 3 (Kompetansemål, LK20 5. trinn):
+        Each relevant LK20 competence goal with a colored status dot
+        (Mestret / Under utvikling / Ikke startet / Ikke påbegynt i appen)
+        Verbatim Norwegian goal text from Udir, Norwegian note per goal
+        One-line summary footnote
+- New module games/curriculum.py:
+    GOALS_5_TRINN list (8 relevant LK20 goals; spreadsheet + programming
+    goals intentionally out of scope for this math-drill product)
+    Each goal declares its covering game_ids and threshold tier;
+    adding a new game family later = editing one list
+    goal_status(), summary_counts(), strongest/weakest helpers
+- pdf_export.py rewrite:
+    Multi-page _Doc / _Page writer with proper xref bookkeeping
+    cp1252 / WinAnsiEncoding — native æ, ø, å rendering
+    Typographic Unicode normalisation (em-dash, curly quotes) on write
+    Helvetica character-width table for word-wrap + right-alignment
+    Expansion-ready: appendix pages can be added via doc.new_page()
+- Page-footer contract: "Side X av 3" kept as a constant so future appendix
+  pages don't invalidate the displayed total on the three main pages
+- Report filename unchanged (progress_<profile>_<YYYY-MM-DD>.pdf)
+- Note: update build.bat manually — change set VERSION=0.6.0 to set VERSION=0.6.1
+
+v0.6.0  (2026-04-17)
+--------------------
+- Added Progress & Stats screen — accessible from the main menu per profile:
+    Summary tiles: total correct, days played, best streak, total practice time
+    14-day questions-per-day bar chart (Canvas-drawn, attempts + correct stacked)
+    Per-game accuracy trend sparklines (one per game mode with data)
+    Per-game summary table: sessions, correct, attempts, avg accuracy, best streak, last played
+    Recent achievements highlight strip
+- New sessions.json per-profile log — every completed session is recorded:
+    Fields: date, ts, game_id, correct, attempts, accuracy, streak, minutes
+    Committed at end of every session via base_game._commit_and_check
+- New games/sessions_store.py (SessionsStore class) with aggregation helpers:
+    daily_counts(days), per_game_summary(), accuracy_series(game_id, limit),
+    total_minutes(), first_session_date()
+- PDF export — one-page A4 parent-friendly progress report:
+    Zero-dependency pure-Python PDF writer (games/pdf_export.py)
+    Title + profile + date, summary tiles, bar chart, per-game table, recent achievements
+    File → Save-As dialog, default filename: progress_<profile>_<YYYY-MM-DD>.pdf
+- New "Progress & Stats" card on the main menu, next to Practice Missed
+- profile_manager.load_stores now returns a 4-tuple including the SessionsStore
+- base_game.BaseGame.__init__ accepts an optional sessions_store kwarg
+- Roadmap updated: v0.7 (Stats) promoted to v0.6.0, v0.6 (Tutorial) deferred to v0.7.0
+- Note: update build.bat manually — change set VERSION=0.5.2 to set VERSION=0.6.0
 
 v0.5.2  (2026-04-16)
 --------------------

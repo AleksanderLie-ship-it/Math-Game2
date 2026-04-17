@@ -8,6 +8,7 @@ Profiles are stored under:
     achievements.json
     scores.json
     missed.json
+    sessions.json
 
 A profile registry at:
   %APPDATA%\MathPractice\profiles.json
@@ -23,6 +24,7 @@ import shutil
 from .achievements_store import AchievementsStore
 from .missed_store       import MissedStore
 from .scores_store       import ScoresStore
+from .sessions_store     import SessionsStore
 
 
 # ── Base path ─────────────────────────────────────────────────────────────────
@@ -112,8 +114,8 @@ def set_last_profile(name: str):
 
 # ── Store factory ─────────────────────────────────────────────────────────────
 
-def load_stores(name: str) -> tuple[AchievementsStore, MissedStore, ScoresStore]:
-    """Instantiate all three stores for the given profile."""
+def load_stores(name: str) -> tuple[AchievementsStore, MissedStore, ScoresStore, SessionsStore]:
+    """Instantiate all four stores for the given profile."""
     d = _profile_dir(name)
     d.mkdir(parents=True, exist_ok=True)
     set_last_profile(name)
@@ -121,4 +123,5 @@ def load_stores(name: str) -> tuple[AchievementsStore, MissedStore, ScoresStore]
         AchievementsStore(d),
         MissedStore(d),
         ScoresStore(d),
+        SessionsStore(d),
     )

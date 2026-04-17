@@ -10,7 +10,7 @@ To add a new game:
 """
 # Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
-__version__ = "0.5.2"
+__version__ = "0.6.0"
 
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -28,6 +28,7 @@ from games.conv_basic         import ConvBasic
 from games.conv_intermediate  import ConvIntermediate
 from games.conv_advanced      import ConvAdvanced
 from games.practice_missed    import PracticeMissed
+from games.stats_screen       import StatsScreen
 from games.profile_manager    import (
     list_profiles, create_profile, delete_profile, load_stores, last_profile,
 )
@@ -187,10 +188,11 @@ class App:
         self._scroll_target = None
 
         # Active profile stores — set after profile selection
-        self._profile_name  = None
-        self._ach_store     = None
-        self._missed_store  = None
-        self._scores_store  = None
+        self._profile_name    = None
+        self._ach_store       = None
+        self._missed_store    = None
+        self._scores_store    = None
+        self._sessions_store  = None
 
         # Persistent root-level mousewheel
         def _wheel(e):
@@ -239,6 +241,7 @@ class App:
         self._clear()
         self._profile_name = None
         self._ach_store = self._missed_store = self._scores_store = None
+        self._sessions_store = None
 
         outer = tk.Frame(self.root, bg="#f8fafc")
         outer.pack(fill=tk.BOTH, expand=True)
@@ -362,8 +365,9 @@ class App:
 
     def _load_profile(self, name: str):
         """Load stores for the chosen profile and go to game menu."""
-        self._profile_name                                       = name
-        self._ach_store, self._missed_store, self._scores_store  = load_stores(name)
+        self._profile_name = name
+        (self._ach_store, self._missed_store,
+         self._scores_store, self._sessions_store) = load_stores(name)
         self.show_menu()
 
     # ---------------------------------------------------------------- settings
@@ -597,6 +601,7 @@ class App:
         for col in range(3):
             cards.columnconfigure(col, weight=1)
 
+        # ── Practice Missed card ─────────────────────────────────────────
         count   = self._missed_store.count()
         enabled = count > 0
 
@@ -640,6 +645,47 @@ class App:
         if enabled:
             for w in (card, inner):
                 w.bind("<Button-1>", lambda e: self._launch_practice())
+
+        # ── Progress & Stats card ────────────────────────────────────────
+        sess_count = self._sessions_store.count() if self._sessions_store else 0
+        days       = len(self._ach_store.get_stats().get("days_played", []))
+
+        if sess_count > 0:
+            stats_desc = (f"{sess_count} session{'s' if sess_count != 1 else ''}"
+                          f" across {days} day{'s' if days != 1 else ''}.")
+        else:
+            stats_desc = "Charts, trends, and a printable report for parents."
+
+        stats_card = tk.Frame(cards, bg="white",
+                              highlightbackground="#e2e8f0", highlightthickness=1,
+                              cursor="hand2")
+        stats_card.grid(row=0, column=1, sticky="nsew", padx=(0, 16))
+
+        stats_inner = tk.Frame(stats_card, bg="white", padx=22, pady=22)
+        stats_inner.pack(fill=tk.BOTH, expand=True)
+
+        tk.Label(stats_inner, text="Insights",
+                 font=("Helvetica", 9, "bold"),
+                 bg="#ecfdf5", fg="#047857",
+                 padx=10, pady=3).pack(anchor="w", pady=(0, 12))
+        tk.Label(stats_inner, text="Progress & Stats",
+                 font=("Helvetica", 15, "bold"),
+                 bg="white", fg="#0f172a").pack(anchor="w")
+        tk.Label(stats_inner, text=stats_desc,
+                 font=("Helvetica", 10), bg="white", fg="#64748b",
+                 justify="left", wraplength=260).pack(anchor="w", pady=(6, 18))
+
+        tk.Button(
+            stats_inner, text="View Progress  ->",
+            font=("Helvetica", 10, "bold"),
+            bg="#047857", fg="white",
+            relief="flat", bd=0, padx=14, pady=6, cursor="hand2",
+            activebackground="#065f46", activeforeground="white",
+            command=self._launch_stats,
+        ).pack(anchor="w")
+
+        for w in (stats_card, stats_inner):
+            w.bind("<Button-1>", lambda e: self._launch_stats())
 
     # ------------------------------------------------------------------ cards
 
@@ -874,7 +920,8 @@ class App:
                     back_callback=self.show_menu,
                     ach_store=self._ach_store,
                     missed_store=self._missed_store,
-                    scores_store=self._scores_store)
+                    scores_store=self._scores_store,
+                    sessions_store=self._sessions_store)
 
     def _launch_practice(self):
         self._clear()
@@ -885,7 +932,20 @@ class App:
                        back_callback=self.show_menu,
                        ach_store=self._ach_store,
                        missed_store=self._missed_store,
-                       scores_store=self._scores_store)
+                       scores_store=self._scores_store,
+                       sessions_store=self._sessions_store)
+
+    def _launch_stats(self):
+        self._clear()
+        frame = tk.Frame(self.root, bg="#f8fafc")
+        frame.pack(fill=tk.BOTH, expand=True)
+        self._current = frame
+        StatsScreen(frame,
+                    back_callback=self.show_menu,
+                    profile_name=self._profile_name,
+                    ach_store=self._ach_store,
+                    sessions_store=self._sessions_store,
+                    scores_store=self._scores_store)
 
     def _clear(self):
         self._scroll_target = None

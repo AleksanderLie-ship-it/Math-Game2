@@ -35,7 +35,8 @@ class PracticeMissed(BaseGame):
 
     # ------------------------------------------------------------------ init
 
-    def __init__(self, parent, back_callback, ach_store, missed_store, scores_store):
+    def __init__(self, parent, back_callback, ach_store, missed_store, scores_store,
+                 sessions_store=None):
         # Set up queue BEFORE super().__init__ calls new_question()
         self._queue: list            = list(missed_store.get_all())
         random.shuffle(self._queue)
@@ -50,7 +51,8 @@ class PracticeMissed(BaseGame):
             if ach and ach_store.earn(ach["id"], ach["points"]):
                 self._pending_open_ach = ach
 
-        super().__init__(parent, back_callback, ach_store, missed_store, scores_store)
+        super().__init__(parent, back_callback, ach_store, missed_store, scores_store,
+                         sessions_store=sessions_store)
 
         # Show the open-achievement popup now that the UI is ready
         if self._pending_open_ach:
