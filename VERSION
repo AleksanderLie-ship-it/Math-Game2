@@ -1,10 +1,105 @@
-0.6.1
+0.7.0
 
 CHANGELOG
 =========
 
+v0.7.0  (2026-04-17)
+--------------------
+- Tutorial Slideshow system (the "(i) button" feature, per roadmap) — shipped
+  as framework + first tutorial pack. Accessed via a new "Tutorials" card on
+  the main menu (third card in the Review row, sibling of Progress & Stats
+  and Practice Missed). The in-game (i) launcher on each game screen is
+  deferred to a later 0.7.x — this release ships the browser entry only.
+
+- New package games/tutorials/ with:
+    __init__.py
+        TUTORIAL_REGISTRY: dict[str, module] — game_id -> content module.
+        Adding a new tutorial is one line here + one new content file.
+        Helpers: get_tutorial(gid), has_tutorial(gid).
+    slideshow_frame.py
+        Reusable SlideshowFrame widget. Pure tkinter Canvas (720x340) with
+        prev/next nav, keyboard arrows, and "Next example" cycling through
+        curated worked problems. Palette mirrors stats_screen.py.
+        Exports drawing helpers that content modules build on:
+            draw_centered_expression(canvas, text, y, size, color, bold, w)
+            draw_note(canvas, text, y, w, color, size)
+            draw_arrow(canvas, x1, y1, x2, y2, color, width, dash)
+            draw_pill(canvas, cx, cy, text, bg, fg, pad, size, bold)
+    tutorials_panel.py
+        Full-page grid of tutorial cards, grouped by curriculum category
+        (Multiplication / Division / Fractions — Operations / Fractions —
+        Conversions). Cards render as Guide / Locked / "No guide needed"
+        based on TUTORIAL_REGISTRY membership and UNLOCK_REQUIREMENTS.
+    tutorial_div_basic.py
+        First content pack. 4 slides x 3 examples:
+            1 — The big idea (division undoes multiplication)
+            2 — Flip the question (rewrite a/b as "? x b = a")
+            3 — Use the times table (walk divisor's row until match)
+            4 — Verify (multiply back to confirm)
+
+- Content-module contract (for future tutorial packs):
+    Each tutorial_<game_id>.py must export four names:
+        TITLE    : str           shown in slideshow header (English)
+        LEAD     : str           one-liner subtitle
+        SLIDES   : list[dict]    each dict {title, caption, draw}
+                                  draw(canvas, example, w, h) -> None
+        EXAMPLES : list[dict]    tutorial-defined shape. The "Next example"
+                                  button cycles through these and re-runs
+                                  the current slide's draw with the new
+                                  example. Arithmetic packs use
+                                  {"a": int, "b": int, "ans": int}.
+    All copy is English (in-game UI language). Norwegian lives only in
+    the parent PDF report.
+
+- Design rules baked in:
+    mult_basic intentionally has NO tutorial (rote memorisation — nothing
+    to walk through). The panel renders a "No guide needed" placeholder
+    so the grid stays even.
+    Tutorial lock state mirrors UNLOCK_REQUIREMENTS from achievements.py —
+    never show a guide for content the pupil can't yet play.
+    Canvas size is fixed at 720x340 (CANVAS_W, CANVAS_H in slideshow_frame).
+    Anything past x=720 clips. Measure-then-draw for any pill or strip
+    that holds variable-length text (see Slide 4 tip box for the pattern).
+
+- Main menu wiring:
+    game.py line 32: `from games.tutorials.tutorials_panel import TutorialsPanel`
+    game.py line 33: `from games.tutorials import TUTORIAL_REGISTRY`
+    "Open Tutorials" card sits at row=0, column=2 in the Review row, next
+    to Practice Missed (col 0) and Progress & Stats (col 1).
+    Entry point: App._launch_tutorials — mounts TutorialsPanel in a fresh
+    Frame under root, back_callback=self.show_menu.
+
+- Bugfix: Tk 9 / Python 3.14 compatibility. Widget-level pady= must be a
+  single integer; passing a tuple now raises TclError "bad screen distance".
+  Fixed in slideshow_frame.py line 117 by moving the asymmetric padding
+  from the Frame constructor onto the subsequent .pack() call (pack/grid
+  DO accept tuples). Hardened SlideshowFrame.__init__ to pre-declare widget
+  attrs as None and _render_current to no-op when they are — so a partial
+  build fails loudly in the right place rather than surfacing a misleading
+  AttributeError from a later button click.
+
+- Bugfix: Slide 3 content overflow. The "match — answer is X" label sat at
+  x=660 on a 720px canvas; "match —" showed, rest clipped. Shortened to
+  just "match!" at x=col_x[2]+155 with a shorter arrow. The green-highlighted
+  row already carries the pedagogy.
+
+- Bugfix: Slide 4 Tip box lopsided. The 600px fixed-width pill had ~180px
+  of empty space on the right. Replaced with a measure-then-draw approach
+  (canvas.bbox on hidden probe text), so the pill now wraps tightly around
+  "Tip + body" and centres on the canvas. Reusable pattern for future packs.
+
+- Note: update build.bat manually — change set VERSION=0.6.1 to set VERSION=0.7.0
+
 v0.6.1  (2026-04-17)
 --------------------
+- Bugfix: mousewheel scrolling on the main menu stopped working after
+  returning from a subscreen (Practice Missed, Progress & Stats). Root
+  cause: subscreens called canvas.bind_all("<MouseWheel>", ...), which is
+  application-wide and replaced the menu's own handler with one whose
+  captured canvas was destroyed on return. Fix: App._install_wheel_handler
+  centralises the root wheel binding, and show_menu re-installs it each
+  time the menu is rendered. Mousewheel now works anywhere over the menu
+  body again, not just directly over the scrollbar.
 - PDF parent report reworked into a 3-page professional report in Norwegian:
     Page 1 (Oppsummering):
         Header, 4 summary tiles, 14-day bar chart,

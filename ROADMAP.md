@@ -1,8 +1,68 @@
 # Math Practice — Product Roadmap
 ## Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
-Current version: **v0.6.1**
+Current version: **v0.7.0**
 Target: word-of-mouth sellable at 199 NOK to Norwegian parents/homeschool networks
+
+---
+
+## Repo quick map (for future context)
+
+Runtime is Windows, Python 3.14 (Tk 9). The user ships PyInstaller exes from
+`build.bat`; `dist/` holds the latest builds. Exe VERSION is set manually in
+`build.bat`; in-app version is `game.py::__version__`; plain-text changelog
+is the `VERSION` file (single source of truth for release notes).
+
+```
+game.py                       entry point + App class (menu, nav, wiring)
+build.bat                     PyInstaller one-file build (update VERSION= by hand)
+VERSION                       current version on line 1, full CHANGELOG below
+ROADMAP.md                    this file
+README.md                     user-facing intro
+
+games/
+  base_game.py                shared BaseGame (question loop, stats plumbing,
+                              scratch pad, sessions_store commit, end-of-session
+                              name prompt + achievement popups). Every game mode
+                              subclasses this.
+  achievements.py             GAME_IDS, GAME_NAMES, UNLOCK_REQUIREMENTS,
+                              ACHIEVEMENTS list (49), ACHIEVEMENTS_BY_ID
+  achievements_store.py       per-profile persistence of earned/progress
+  missed_store.py             per-profile missed-question queue
+  scores_store.py             per-profile leaderboard
+  sessions_store.py           per-profile session log (added v0.6.0)
+                              .daily_counts / .per_game_summary /
+                              .accuracy_series / .total_minutes
+  settings_manager.py         global settings.json in %APPDATA%
+  profile_manager.py          profile CRUD; load_stores() -> (ach, missed,
+                              scores, sessions) 4-tuple
+  curriculum.py               LK20 5. trinn goal mapping (parent PDF)
+  pdf_export.py               3-page Norwegian parent PDF (zero-dep writer)
+  stats_screen.py             full-page Progress & Stats screen
+  practice_missed.py          Practice Missed review queue screen
+
+  mult_basic / mult_intermediate / mult_advanced
+  div_basic  / div_intermediate  / div_advanced
+  frac_base.py (shared parser) + frac_basic / frac_intermediate / frac_advanced
+  conv_basic / conv_intermediate / conv_advanced
+
+  tutorials/                  added v0.7.0 — see v0.7 section below
+    __init__.py               TUTORIAL_REGISTRY
+    slideshow_frame.py        reusable SlideshowFrame + drawing helpers
+    tutorials_panel.py        grid-of-cards entry screen
+    tutorial_div_basic.py     first content pack
+
+assets/                       avatar packs + UI frames (used from v0.8.0)
+```
+
+Profile data on disk: `%APPDATA%\MathPractice\profiles\<name>\` containing
+`achievements.json`, `scores.json`, `missed.json`, `sessions.json`. Global
+settings at `%APPDATA%\MathPractice\settings.json`.
+
+Sandbox testing: `test_tutorials_mock.py` at `/sessions/loving-wonderful-fermat/`
+validates tutorial slide draws against a MockCanvas without needing Tk —
+run it after any tutorial change. `test_tutorials.py` needs a DISPLAY and
+is only useful on the user's machine.
 
 ---
 
@@ -70,22 +130,89 @@ it turns drill data into a language teachers and parents already trust.
 
 ---
 
-### v0.7.0 — Tutorial Slideshow (the (i) button)  [deferred from v0.6]
+### v0.7.0 — Tutorial Slideshow  ✅ FRAMEWORK SHIPPED (2026-04-17)
 **Why here:** Makes the product a teaching tool, not just a quiz.
 Significant differentiator for the 199 NOK price point.
 
-- Small (i) button in corner of each game screen during play
-- Opens a Canvas-based slideshow with a freshly generated example problem
-- Step-by-step slides with animated arrows showing exactly which digit
-  multiplies which — mirrors the method Aleks uses when teaching Phillip
-- Each game mode has its own slide sequence:
-  - Mult Basic: single-digit × single-digit with simple grouping visual
-  - Mult Intermediate/Advanced: partial products method with arc arrows
-  - Div Basic: short division with remainder explanation
-  - Div Intermediate/Advanced: long division step-by-step
-  - Fractions: denominator alignment, finding LCM, simplification
-- Forward/back navigation through slides
-- No static image assets — all rendered programmatically on Canvas
+**What shipped in v0.7.0:**
+- `games/tutorials/` package with the full architecture
+  (see VERSION changelog for module layout and the 4-name content contract
+  TITLE / LEAD / SLIDES / EXAMPLES)
+- Reusable `SlideshowFrame` widget: pure Canvas (720x340), prev/next +
+  keyboard arrows, "Next example" button cycling curated problems
+- `TutorialsPanel` full-page browser, grouped by curriculum category,
+  lock state mirrored from `UNLOCK_REQUIREMENTS`
+- Main-menu "Open Tutorials" card (Review row, next to Practice Missed
+  and Progress & Stats)
+- First content pack: **tutorial_div_basic** (4 slides x 3 examples,
+  method = division as reverse multiplication using the times table)
+- Shared drawing helpers exported from `slideshow_frame`:
+  `draw_centered_expression`, `draw_note`, `draw_arrow`, `draw_pill`
+
+**What's left in v0.7.x — tutorial content packs.**
+
+Each of the following needs a `tutorial_<game_id>.py` module following the
+same shape as `tutorial_div_basic.py`, plus one line in
+`games/tutorials/__init__.py` to register it. The pedagogical method per
+pack MUST match how Aleks actually teaches Phillip — do not invent a
+method. Below each game lists the *tentative* slide plan; confirm with
+Aleks before writing slides.
+
+Ordering priority: finish the beginner tier across categories first (most
+used, easiest wins), then intermediate, then advanced. Fractions packs
+are higher-impact than Division Intermediate/Advanced because fractions
+are the primary LK20 5. trinn differentiator.
+
+| game_id             | status  | tentative slide plan                                                                                       |
+|---------------------|---------|-------------------------------------------------------------------------------------------------------------|
+| `mult_basic`        | SKIP    | Pure memorisation; panel renders "No guide needed" placeholder. Intentional, do not add.                    |
+| `div_basic`         | ✅ done | Shipped in v0.7.0.                                                                                          |
+| `frac_basic`        | TODO    | Same-denominator add/sub. Visual bar model (8 bars, shade 3 + shade 2 = shade 5). Stress "denominator unchanged". |
+| `conv_basic`        | TODO    | Fraction ↔ decimal for "clean" denominators (2, 4, 5, 8, 10). Method: rewrite as tenths/hundredths. Place-value grid. |
+| `mult_intermediate` | TODO    | 2-digit × 1-digit partial products. Break 24×7 into (20×7)+(4×7). Arc arrows from each digit.              |
+| `div_intermediate`  | TODO    | Short division with remainder. Step the dividend digit-by-digit; carry remainder across. Reuse times-table visual from div_basic. |
+| `frac_intermediate` | TODO    | Different-denominator add where one divides the other (1/4 + 3/8). Scale up 1/4 → 2/8, then add. Emphasise "same denom, then add numerators". |
+| `conv_intermediate` | TODO    | Fraction ↔ percentage. Method: "% means out of 100". 3/4 → 75/100 → 75%. Bar model with 100 squares.        |
+| `mult_advanced`     | TODO    | 2-digit × 2-digit standard algorithm. Partial products stacked, carry rules. Biggest risk of slide overflow — keep numbers small (use 14×12 style examples). |
+| `div_advanced`      | TODO    | Long division. Decide method with Aleks: Norwegian "trappa"/staircase layout vs. English bring-down layout. |
+| `frac_advanced`     | TODO    | Mixed numbers + improper fractions. Convert to improper → add → convert back. Two-lane layout (original form vs. improper form) throughout. |
+| `conv_advanced`     | TODO    | All three directions consolidated. Build on conv_basic + conv_intermediate. Slide 1 = "the three forms are the same number". |
+
+**v0.7.x follow-up features (after content is in):**
+- In-game `(i)` button: small icon in the top-right of each game screen
+  during a session that opens the same slideshow in a modal/overlay,
+  pre-seeded with the current question as its example.
+  `base_game.BaseGame.__init__` is the right place to add the button;
+  the overlay should pause the session timer.
+- Optional: animated reveals per slide (fade-in of arrows / partial
+  products). Framework intentionally ships without animation — only add
+  per slide where the step sequence genuinely needs it.
+- Optional: one "shared" tutorial entry point for Fractions that mixes
+  operations and conversions slides into a single guided tour. Parent
+  feedback will tell us if that's needed.
+
+**Implementation notes for whoever picks this up (future Claude, read these before writing any slide code):**
+- Canvas is a fixed 720x340. Anything that might reach x>720 or y>340
+  WILL clip. Use `canvas.bbox` on a hidden probe text to measure strings
+  before drawing pills/strips around them. See the Slide 4 Tip box in
+  `tutorial_div_basic._slide_4` for the measure-then-draw pattern.
+- Widget-level `pady=`/`padx=` on `tk.Frame/Label/Button` must be a
+  single int in Tk 9 / Python 3.14. Tuples only work on `.pack(pady=…)`
+  and `.grid(pady=…)`. This bit us once in v0.7.0 — fix the caller, not
+  the widget.
+- Colour palette is defined once in `slideshow_frame.py`
+  (`INK MUTED DIM FAINT SOFT ACCENT ACCENT_DARK GOOD WARN BG CARD_BG
+  CARD_BORDER`). Import from there, don't hardcode hex.
+- Every new pack adds one entry to `TUTORIAL_REGISTRY` in
+  `games/tutorials/__init__.py`. The panel auto-picks it up — no changes
+  needed in `tutorials_panel.py`.
+- `tutorials_panel._CATEGORIES` hardcodes the category ordering; add new
+  game_ids to the right category list if they introduce a new game family.
+- Test harness: `test_tutorials_mock.py` at repo root (sandbox path) runs
+  every slide × every example against a MockCanvas without needing Tk.
+  Run it after adding a pack to catch silly errors early. Tk-dependent
+  interactive test is `test_tutorials.py` — requires a DISPLAY, skipped
+  in sandbox.
 
 ---
 
@@ -216,13 +343,15 @@ g6 (probability) → g5 (fraction word problems) → g9 (time) → g7 (equations
 
 ## Version Key
 
-| Range     | Meaning                            |
-|-----------|-----------------------------------|
-| 0.1–0.3   | Core game + achievements (done)    |
-| 0.4–0.5   | Profiles + new content (done)      |
-| 0.6       | Analytics — Progress & Stats (done)|
-| 0.6.1     | Parent report (Norwegian, LK20)    |
-| 0.7       | Teaching tools — Tutorial (i)      |
-| 0.8–0.9   | Monetisation + polish              |
-| 1.0       | Public release                     |
-| 1.x       | Post-launch iteration              |
+| Range     | Meaning                                                   |
+|-----------|-----------------------------------------------------------|
+| 0.1–0.3   | Core game + achievements (done)                           |
+| 0.4–0.5   | Profiles + new content (done)                             |
+| 0.6       | Analytics — Progress & Stats (done)                       |
+| 0.6.1     | Parent report, Norwegian / LK20 (done)                    |
+| 0.7.0     | Tutorial framework + first pack (div_basic) (done)        |
+| 0.7.x     | Remaining tutorial packs + in-game (i) button (in progress)|
+| 0.8–0.9   | Monetisation + polish                                     |
+| 1.0       | Public release                                            |
+| 1.x       | Post-launch iteration                                     |
+                                

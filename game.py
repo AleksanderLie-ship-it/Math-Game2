@@ -10,7 +10,7 @@ To add a new game:
 """
 # Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -29,6 +29,8 @@ from games.conv_intermediate  import ConvIntermediate
 from games.conv_advanced      import ConvAdvanced
 from games.practice_missed    import PracticeMissed
 from games.stats_screen       import StatsScreen
+from games.tutorials.tutorials_panel import TutorialsPanel
+from games.tutorials          import TUTORIAL_REGISTRY
 from games.profile_manager    import (
     list_profiles, create_profile, delete_profile, load_stores, last_profile,
 )
@@ -194,21 +196,13 @@ class App:
         self._scores_store    = None
         self._sessions_store  = None
 
-        # Persistent root-level mousewheel
-        def _wheel(e):
-            t = self._scroll_target
-            if t:
-                try:
-                    t.yview_scroll(int(-1 * (e.delta / 120)), "units")
-                except Exception:
-                    pass
-        self.root.bind_all("<MouseWheel>", _wheel)
-        self.root.bind_all("<Button-4>",
-                           lambda e: self._scroll_target and
-                           self._scroll_target.yview_scroll(-1, "units"))
-        self.root.bind_all("<Button-5>",
-                           lambda e: self._scroll_target and
-                           self._scroll_target.yview_scroll(1, "units"))
+        # Persistent root-level mousewheel. Installed now and re-installed
+        # every time show_menu() runs — subscreens (Stats, Practice Missed,
+        # Tutorials) rebind <MouseWheel> via bind_all to scroll their own
+        # canvases. bind_all is application-wide, so the menu must reclaim
+        # the binding each time it becomes visible, or its scroll silently
+        # dispatches to a destroyed subscreen canvas.
+        self._install_wheel_handler()
 
         # Apply start-maximized before first screen shows
         if settings.get("start_maximized"):
@@ -501,6 +495,10 @@ class App:
                     lambda e: canvas.itemconfig(win_id, width=e.width))
 
         self._scroll_target = canvas
+        # Reclaim the root mousewheel binding from whichever subscreen we
+        # just returned from; otherwise scrolling only works over the
+        # scrollbar itself.
+        self._install_wheel_handler()
 
         # ── Header ────────────────────────────────────────────────────────────
         hdr = tk.Frame(inner, bg="#f8fafc", padx=48, pady=32)
@@ -686,6 +684,49 @@ class App:
 
         for w in (stats_card, stats_inner):
             w.bind("<Button-1>", lambda e: self._launch_stats())
+
+        # ── Tutorials card ───────────────────────────────────────────────
+        # Count tutorials unlocked for the active profile so the subtitle
+        # tells the user how many guides are currently available.
+        from games.achievements import UNLOCK_REQUIREMENTS as _UR
+        unlocked = sum(
+            1 for gid in TUTORIAL_REGISTRY
+            if not (_UR.get(gid) and not self._ach_store.has(_UR[gid]))
+        )
+        total = len(TUTORIAL_REGISTRY)
+        tut_desc = (f"{unlocked} of {total} guide{'s' if total != 1 else ''} "
+                    f"unlocked. Step-by-step walkthroughs of each game.")
+
+        tut_card = tk.Frame(cards, bg="white",
+                            highlightbackground="#e2e8f0", highlightthickness=1,
+                            cursor="hand2")
+        tut_card.grid(row=0, column=2, sticky="nsew")
+
+        tut_inner = tk.Frame(tut_card, bg="white", padx=22, pady=22)
+        tut_inner.pack(fill=tk.BOTH, expand=True)
+
+        tk.Label(tut_inner, text="Learn",
+                 font=("Helvetica", 9, "bold"),
+                 bg="#eef2ff", fg="#4f46e5",
+                 padx=10, pady=3).pack(anchor="w", pady=(0, 12))
+        tk.Label(tut_inner, text="Tutorials",
+                 font=("Helvetica", 15, "bold"),
+                 bg="white", fg="#0f172a").pack(anchor="w")
+        tk.Label(tut_inner, text=tut_desc,
+                 font=("Helvetica", 10), bg="white", fg="#64748b",
+                 justify="left", wraplength=260).pack(anchor="w", pady=(6, 18))
+
+        tk.Button(
+            tut_inner, text="Open Tutorials  ->",
+            font=("Helvetica", 10, "bold"),
+            bg="#4f46e5", fg="white",
+            relief="flat", bd=0, padx=14, pady=6, cursor="hand2",
+            activebackground="#4338ca", activeforeground="white",
+            command=self._launch_tutorials,
+        ).pack(anchor="w")
+
+        for w in (tut_card, tut_inner):
+            w.bind("<Button-1>", lambda e: self._launch_tutorials())
 
     # ------------------------------------------------------------------ cards
 
@@ -947,11 +988,42 @@ class App:
                     sessions_store=self._sessions_store,
                     scores_store=self._scores_store)
 
+    def _launch_tutorials(self):
+        self._clear()
+        frame = tk.Frame(self.root, bg="#f8fafc")
+        frame.pack(fill=tk.BOTH, expand=True)
+        self._current = frame
+        TutorialsPanel(frame,
+                       back_callback=self.show_menu,
+                       ach_store=self._ach_store)
+
     def _clear(self):
         self._scroll_target = None
         if self._current is not None:
             self._current.destroy()
             self._current = None
+
+    def _install_wheel_handler(self):
+        """Install (or re-install) the root-level mousewheel handler.
+
+        Called from __init__ and from show_menu() so the menu reclaims the
+        <MouseWheel> binding after returning from a subscreen whose own
+        bind_all call overrode ours.
+        """
+        def _wheel(e):
+            t = self._scroll_target
+            if t:
+                try:
+                    t.yview_scroll(int(-1 * (e.delta / 120)), "units")
+                except Exception:
+                    pass
+        self.root.bind_all("<MouseWheel>", _wheel)
+        self.root.bind_all("<Button-4>",
+                           lambda e: self._scroll_target and
+                           self._scroll_target.yview_scroll(-1, "units"))
+        self.root.bind_all("<Button-5>",
+                           lambda e: self._scroll_target and
+                           self._scroll_target.yview_scroll(1, "units"))
 
 
 # ── Entry point ────────────────────────────────────────────────────────────────
