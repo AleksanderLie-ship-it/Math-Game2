@@ -111,6 +111,19 @@ class ConvAdvanced(FractionBase):
     def get_expected(self) -> Fraction:
         return self._expected
 
+    def _alternate_expected(self):
+        # Only relevant when a percentage is source or target and the pair
+        # is rounded (3/8↔38, 1/8↔13). When the source is the exact
+        # fraction or exact decimal (frac_to_dec, dec_to_frac), the
+        # literal rounded reading should NOT be accepted — the student
+        # has exact data and must give an exact answer.
+        if "pct" not in self._direction:
+            return ()
+        literal = Fraction(self._pct, 100)
+        if literal != self._frac:
+            return (literal,)
+        return ()
+
     def update_question_display(self):
         d = self._direction
         prompts = {

@@ -98,6 +98,17 @@ class ConvIntermediate(FractionBase):
     def get_expected(self) -> Fraction:
         return self._expected
 
+    def _alternate_expected(self):
+        # For rounded pairs (1/3↔33, 2/3↔67, 1/8↔13, 3/8↔38) the displayed
+        # percentage is not mathematically equal to the stored fraction.
+        # Accept the literal pct/100 reading in addition to the exact
+        # fraction, so a student who computed 38/100 (= 19/50) or typed
+        # 38 as a percentage of 3/8 does not get marked wrong.
+        literal = Fraction(self._pct, 100)
+        if literal != self._frac:
+            return (literal,)
+        return ()
+
     def update_question_display(self):
         if self._direction == "to_pct":
             self.prompt_label.configure(text="Convert to percentage:")

@@ -1,7 +1,105 @@
-0.7.0
+0.7.1
 
 CHANGELOG
 =========
+
+v0.7.1  (2026-04-18)
+--------------------
+- Bugfix: Conversions: Intermediate wrongly rejected literal readings of
+  rounded-percent prompts. "Convert 38% to fraction" accepted only 3/8
+  and rejected 38/100 (= 19/50); "Convert 33% to fraction" accepted 1/3
+  only. Same class of bug affected every rounded pair in the pool
+  (1/3↔33, 2/3↔67, 1/8↔13, 3/8↔38) and both directions (to_pct and
+  to_fraction). Root cause: _answers_match only compared against the
+  exact Fraction stored in the pool, so the literal reading of the
+  *displayed* (rounded) percentage failed the equality check.
+- Bugfix: Conversions: Advanced same issue in the "pct_to_dec" direction
+  — "Convert 38% to decimal" rejected 0.38 because expected was 3/8 =
+  0.375 (diff 0.005, outside 0.0011 tolerance). 0.375 is still accepted;
+  0.38 now passes too.
+- frac_base.py: new _alternate_expected() hook — subclasses return an
+  iterable of Fractions that are also acceptable answers. Tested
+  against the active ANSWER_FORMAT like the primary expected. Default
+  returns (), so games without rounded pairs (frac_*, conv_basic) are
+  unchanged.
+- conv_intermediate.py: overrides _alternate_expected to return the
+  literal pct/100 Fraction when the pool pair is a rounded one. Active
+  for both to_pct and to_fraction directions (both involve the
+  percentage side).
+- conv_advanced.py: overrides _alternate_expected only when the
+  direction string contains "pct" (source or target is a percentage).
+  frac_to_dec and dec_to_frac stay strict — the student has exact data
+  on those directions and must give an exact answer.
+
+- frac_basic (Fractions: Beginner) same-denominator display bug fixed.
+  The card promised "same denominator" but the game regularly rendered
+  questions like "1/3 − 1/6" because Fraction(2, 6) auto-simplifies to
+  Fraction(1, 3) and the old _fmt_frac printed the simplified form.
+  Raw ints are now stored (self._a_num, self._b_num, self._denom) and
+  used for display; the Fraction type is still used for computation
+  and for the answer check. Visible effect: questions now always read
+  "a/d ± b/d = ?" with a common denominator on both sides.
+
+- Fractions: Advanced rewrite. Aleks's note: "numbers not only between
+  1 and 10 — i was thinking 3/13 + 9/19, fractions like this". The
+  previous revamp (bigger mixed numbers) was the wrong direction;
+  Advanced is now:
+    Proper fractions only. No mixed numbers, no improper display.
+    DENOMS pool [5, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]
+    — mix of primes (7, 11, 13, 17, 19) and composites.
+    Pair rule inverted from Intermediate: neither denominator may
+    divide the other. Forces a real LCM step (multiply denominators
+    or find a non-trivial LCM like 18 for 6+9), not just scaling one
+    operand to match the other. This is the pedagogical distinction
+    from Intermediate (which uses multiple-of pairs).
+    Numerators sample 1..denom-1 so on denom 13 a student can hit
+    12/13 — numerators naturally break past 10.
+    Raw numerator/denominator preserved on display (4/12 stays "4/12",
+    not Fraction-simplified to "1/3") so the LCD task stays visible.
+    Results allowed to exceed 1 (answer accepted in improper, mixed, or
+    reduced form — FractionBase parser handles all three).
+    Subtitle: "Add and subtract fractions with unrelated denominators."
+    Hint: "find a common denominator first — any equivalent answer
+    works."
+    Menu card: "Like 3/13 + 9/19 = 174/247."
+
+- Menu card descriptions brought back in line with the rewrite:
+    Fractions: Beginner — "Like 2/5 + 1/5 = 3/5." (previously 1/3+1/3,
+      unrepresentative of the expanded denominator pool)
+    Fractions: Advanced — "Unrelated denominators. Like 3/13 + 9/19 =
+      174/247." (previously 1 1/2 + 2 1/4, the wrong pedagogical
+      target entirely)
+- Bugfix: Tutorials panel mis-labelled genuine TODOs as "No guide
+  needed · This mode is about recall speed, so there's nothing to
+  walk through." That copy was written for mult_basic only but
+  fired for every game missing from TUTORIAL_REGISTRY — including
+  Division: Intermediate (short division) and Division: Advanced
+  (long division), which emphatically ARE concepts worth walking
+  through. Fix: split the placeholder into two distinct states:
+    INTENTIONAL_NO_GUIDE (new set in games/tutorials/__init__.py):
+      currently just {"mult_basic"}. Renders the existing
+      "No guide needed · recall speed" card.
+    Everything else missing from TUTORIAL_REGISTRY:
+      renders a new amber "Guide coming soon" card with copy
+      "A step-by-step walkthrough for this mode is in the works.
+      Play the game in the meantime."
+  tutorials_panel._render_categories now routes each gid to
+  _tutorial_card / _not_needed_card / _coming_soon_card based on
+  this three-way classification. Existing test_tutorials_mock.py
+  still passes; div_basic tutorial behaviour unchanged.
+
+- No DB / persistence schema changes. No new files. Tutorial system
+  slideshow framework (v0.7.0) untouched.
+
+- Verified by test_fraction_fixes.py (sandbox unit test at
+  /sessions/loving-wonderful-fermat/). Covers all three bug cases for
+  conv games, confirms strict directions stay strict, exercises 400
+  frac_basic questions for same-denom display invariant, and exercises
+  600 frac_advanced questions confirming numerators/denoms push past 10
+  and both improper/mixed forms appear. 15/15 passed.
+
+- Note: update build.bat manually — change set VERSION=0.7.0 to
+  set VERSION=0.7.1
 
 v0.7.0  (2026-04-17)
 --------------------

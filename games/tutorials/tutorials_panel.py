@@ -18,7 +18,7 @@ from tkinter import ttk
 from ..achievements import (
     GAME_IDS, GAME_NAMES, UNLOCK_REQUIREMENTS, ACHIEVEMENTS_BY_ID,
 )
-from . import TUTORIAL_REGISTRY
+from . import TUTORIAL_REGISTRY, INTENTIONAL_NO_GUIDE
 from .slideshow_frame import (
     SlideshowFrame,
     BG, CARD_BG, CARD_BORDER, INK, MUTED, DIM, SOFT, FAINT, ACCENT, GOOD,
@@ -131,13 +131,18 @@ class TutorialsPanel:
 
             for col, gid in enumerate(game_ids):
                 padx = (0, 16) if col < 2 else 0
-                if gid not in TUTORIAL_REGISTRY:
-                    # No tutorial for this mode — render an informational
-                    # "not needed" placeholder so the grid stays even.
-                    self._not_needed_card(cards, col, padx, gid)
-                else:
+                if gid in TUTORIAL_REGISTRY:
                     locked = self._is_locked(gid)
                     self._tutorial_card(cards, col, padx, gid, locked=locked)
+                elif gid in INTENTIONAL_NO_GUIDE:
+                    # Designed to have no tutorial — mult_basic is pure
+                    # rote memorisation. Say so explicitly.
+                    self._not_needed_card(cards, col, padx, gid)
+                else:
+                    # Genuine TODO — the topic needs a guide; we just
+                    # haven't written it yet. Don't mislabel long/short
+                    # division or fractions as "recall speed work".
+                    self._coming_soon_card(cards, col, padx, gid)
 
     # ============================================================= cards
 
@@ -229,6 +234,10 @@ class TutorialsPanel:
                  justify="left", wraplength=260).pack(anchor="w")
 
     def _not_needed_card(self, parent, col, padx, gid):
+        """
+        Placeholder for modes that will never have a tutorial by design
+        (currently just mult_basic — single-digit × single-digit memorisation).
+        """
         card = tk.Frame(parent, bg=SOFT,
                         highlightbackground=CARD_BORDER, highlightthickness=1)
         card.grid(row=0, column=col, sticky="nsew", padx=padx)
@@ -248,6 +257,36 @@ class TutorialsPanel:
         tk.Label(inner,
                  text=("This mode is about recall speed, "
                        "so there's nothing to walk through. Just play."),
+                 font=("Helvetica", 10), bg=SOFT, fg=MUTED,
+                 justify="left", wraplength=260).pack(anchor="w", pady=(6, 0))
+
+    def _coming_soon_card(self, parent, col, padx, gid):
+        """
+        Placeholder for modes that should have a tutorial but don't yet.
+        Used for everything not in TUTORIAL_REGISTRY and not in
+        INTENTIONAL_NO_GUIDE. Don't claim there's "nothing to walk
+        through" — these topics (short division, long division,
+        fractions, conversions) all warrant proper guides.
+        """
+        card = tk.Frame(parent, bg=SOFT,
+                        highlightbackground=CARD_BORDER, highlightthickness=1)
+        card.grid(row=0, column=col, sticky="nsew", padx=padx)
+
+        inner = tk.Frame(card, bg=SOFT, padx=22, pady=22)
+        inner.pack(fill=tk.BOTH, expand=True)
+
+        tk.Label(inner, text="Guide coming soon",
+                 font=("Helvetica", 9, "bold"),
+                 bg="#fef3c7", fg="#92400e",
+                 padx=10, pady=3).pack(anchor="w", pady=(0, 12))
+
+        tk.Label(inner, text=GAME_NAMES.get(gid, gid),
+                 font=("Helvetica", 15, "bold"),
+                 bg=SOFT, fg="#475569").pack(anchor="w")
+
+        tk.Label(inner,
+                 text=("A step-by-step walkthrough for this mode is "
+                       "in the works. Play the game in the meantime."),
                  font=("Helvetica", 10), bg=SOFT, fg=MUTED,
                  justify="left", wraplength=260).pack(anchor="w", pady=(6, 0))
 

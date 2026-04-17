@@ -10,7 +10,7 @@ To add a new game:
 """
 # Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
-__version__ = "0.7.0"
+__version__ = "0.7.1"
 
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -113,7 +113,7 @@ CATEGORIES = [
         "games": [
             {
                 "name":     "Beginner",
-                "desc":     "Same-denominator +/−.\nLike 1/3 + 1/3 = 2/3.",
+                "desc":     "Same-denominator +/−.\nLike 2/5 + 1/5 = 3/5.",
                 "badge":    "Beginner",
                 "badge_bg": "#f0fdf4",
                 "badge_fg": "#15803d",
@@ -131,7 +131,7 @@ CATEGORIES = [
             },
             {
                 "name":     "Advanced",
-                "desc":     "Mixed numbers +/−.\nLike 1 1/2 + 2 1/4 = 3 3/4.",
+                "desc":     "Unrelated denominators.\nLike 3/13 + 9/19 = 174/247.",
                 "badge":    "Advanced",
                 "badge_bg": "#fef2f2",
                 "badge_fg": "#b91c1c",

@@ -1,7 +1,7 @@
 # Math Practice — Product Roadmap
 ## Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
-Current version: **v0.7.0**
+Current version: **v0.7.1**
 Target: word-of-mouth sellable at 199 NOK to Norwegian parents/homeschool networks
 
 ---
@@ -134,12 +134,16 @@ it turns drill data into a language teachers and parents already trust.
 **Why here:** Makes the product a teaching tool, not just a quiz.
 Significant differentiator for the 199 NOK price point.
 
-**Known bugs, yet to be fixed**
-Conversions: Intermediate 
- - Convert to fraction: 38% -> answer key 19/50 and 38/100 gets logged and flagged as wrong answer. 
- - Convert to fraction: 33% -> wrong anser for 33/100, correct for 1/3. Rounding error but should be more consistent. 
-Conversion: Advanced
- - Convert to decimal: 38% -> answer key 0.38 gets logged and flagged as wrong answer. 
+**Bugs fixed in v0.7.1 (2026-04-18):**
+- Conversions: Intermediate — "Convert 38% to fraction" now accepts both
+  3/8 and 38/100 (= 19/50). Same fix applies to every rounded pool pair
+  (1/3↔33, 2/3↔67, 1/8↔13, 3/8↔38) across both to_pct and to_fraction.
+- Conversions: Advanced — "Convert 38% to decimal" now accepts 0.38 in
+  addition to 0.375. Only applies when a percentage is source or target
+  (frac_to_dec and dec_to_frac stay strict — student has exact data).
+- Mechanism: new FractionBase._alternate_expected() hook; conv_intermediate
+  and conv_advanced override it to return the literal pct/100 Fraction
+  for rounded pairs.
 
 **What shipped in v0.7.0:**
 - `games/tutorials/` package with the full architecture
@@ -158,14 +162,18 @@ Conversion: Advanced
 
 **What's left in v0.7.x — tutorial content packs.**
 
-FIRST of all, fix the bugs listed. 
-
-Also NEXT Priority is total revamp of the fraction operations games, now beginner says on the card same denominator, but in game shows quesitons like 1/3 - 1/6, clear violation. 
-This should be reserved for intermediate, which means intermediate is good - as is. 
-Advanced tier is total flunk and should not look like that, should be revamped to instead consist of more complex numerator and denominators.
-i.e. number not ONLY between 1 and 10
-
-THEN we can do tutorial cards
+Fraction operations games were also revamped in v0.7.1:
+- frac_basic now truly shows same-denominator prompts. Previously
+  Fraction(2, 6) auto-simplified to 1/3 and questions appeared as
+  "1/3 − 1/6", violating the card's "same denominator" promise. Raw
+  numerators and the raw denominator are now preserved for display.
+- frac_intermediate — left as-is (it was already correct).
+- frac_advanced rewritten as proper fractions with unrelated
+  denominators (neither divides the other). Pool includes primes
+  (7, 11, 13, 17, 19) and composites (10, 12, 14, 15, 16, 18, 20).
+  Forces a real LCM step — the pedagogical distinction from
+  Intermediate's "one divides the other" pairs. Example: 3/13 + 9/19.
+  No mixed numbers on screen.
 
 Each of the following needs a `tutorial_<game_id>.py` module following the
 same shape as `tutorial_div_basic.py`, plus one line in
@@ -359,23 +367,3 @@ g6 (probability) → g5 (fraction word problems) → g9 (time) → g7 (equations
 - Natural science quiz mode (Aleks already teaches this to Phillip)
 - Classroom/teacher license (up to 30 students, 799-999 NOK)
 - Soundtrack (requires pygame dependency — evaluate if worth the exe size cost)
-- Web version / cross-platform rebuild (larger effort, different audience)
-- Code signing certificate (~$300 USD/year) for cleaner SmartScreen experience
-- GDPR compliance + student data handling (required for school contracts)
-
----
-
-## Version Key
-
-| Range     | Meaning                                                   |
-|-----------|-----------------------------------------------------------|
-| 0.1–0.3   | Core game + achievements (done)                           |
-| 0.4–0.5   | Profiles + new content (done)                             |
-| 0.6       | Analytics — Progress & Stats (done)                       |
-| 0.6.1     | Parent report, Norwegian / LK20 (done)                    |
-| 0.7.0     | Tutorial framework + first pack (div_basic) (done)        |
-| 0.7.x     | Remaining tutorial packs + in-game (i) button (in progress)|
-| 0.8–0.9   | Monetisation + polish                                     |
-| 1.0       | Public release                                            |
-| 1.x       | Post-launch iteration                                     |
-                                

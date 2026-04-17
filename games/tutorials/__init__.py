@@ -34,7 +34,7 @@ from . import tutorial_div_basic
 # tutorials panel lays them out in curriculum order.
 
 TUTORIAL_REGISTRY: dict[str, object] = {
-    # "mult_basic":        None,   # intentionally no tutorial
+    # "mult_basic":        None,   # intentionally no tutorial — see INTENTIONAL_NO_GUIDE
     # "mult_intermediate": tutorial_mult_intermediate,   # to come
     # "mult_advanced":     tutorial_mult_advanced,       # to come
     "div_basic":         tutorial_div_basic,
@@ -48,6 +48,16 @@ TUTORIAL_REGISTRY: dict[str, object] = {
     # "conv_advanced":     tutorial_conv_advanced,       # to come
 }
 
+# Game modes that intentionally have no tutorial. The panel renders these
+# with a "No guide needed" placeholder explaining why. Anything NOT in
+# this set and NOT in TUTORIAL_REGISTRY is a genuine TODO — the panel
+# will render a "Guide coming soon" placeholder instead, so we don't
+# mislabel substantive topics (short division, long division, fractions)
+# as "nothing to walk through".
+INTENTIONAL_NO_GUIDE: set[str] = {
+    "mult_basic",   # single-digit × single-digit is pure memorisation
+}
+
 
 def get_tutorial(game_id: str):
     """Return the tutorial module for a game_id, or None if there isn't one."""
@@ -56,3 +66,7 @@ def get_tutorial(game_id: str):
 
 def has_tutorial(game_id: str) -> bool:
     return game_id in TUTORIAL_REGISTRY
+
+
+def is_intentionally_no_guide(game_id: str) -> bool:
+    return game_id in INTENTIONAL_NO_GUIDE

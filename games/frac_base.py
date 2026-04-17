@@ -141,17 +141,40 @@ class FractionBase(BaseGame):
         """
         given    — output of _parse_answer (float or Fraction)
         expected — a Fraction from get_expected()
+
+        Subclasses may return additional acceptable answers via
+        _alternate_expected() — each is tested against the same format rules.
+        This is how conversion games accept both the exact fraction and
+        the literal reading of a rounded percentage (e.g. 38% may be
+        answered as either 3/8 or 19/50).
         """
         fmt = getattr(self, "ANSWER_FORMAT", "fraction")
-        try:
-            if fmt == "decimal":
-                return abs(float(given) - float(expected)) < 0.0011
-            elif fmt == "percentage":
-                return abs(float(given) / 100.0 - float(expected)) < 0.0011
-            else:
-                return Fraction(given) == Fraction(expected)
-        except Exception:
-            return False
+        candidates = [expected]
+        extras = self._alternate_expected()
+        if extras:
+            candidates.extend(extras)
+
+        for cand in candidates:
+            try:
+                if fmt == "decimal":
+                    if abs(float(given) - float(cand)) < 0.0011:
+                        return True
+                elif fmt == "percentage":
+                    if abs(float(given) / 100.0 - float(cand)) < 0.0011:
+                        return True
+                else:
+                    if Fraction(given) == Fraction(cand):
+                        return True
+            except Exception:
+                continue
+        return False
+
+    def _alternate_expected(self):
+        """
+        Override to list additional acceptable Fraction answers for the
+        current question. Returns an iterable of Fractions (or empty).
+        """
+        return ()
 
     # ─────────────────────────────────────────────────── missed store ──────────
 

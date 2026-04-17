@@ -27,10 +27,14 @@ class FracBasic(FractionBase):
 
     def __init__(self, parent, back_callback, ach_store, missed_store, scores_store,
                  sessions_store=None):
-        self._num_a    = Fraction(1, 2)
-        self._num_b    = Fraction(1, 4)
+        # Raw integer parts preserve the same-denominator presentation; the
+        # Fraction constructor auto-simplifies, which used to turn "2/4"
+        # into "1/2" on display and violated the card's promise.
+        self._a_num    = 1
+        self._b_num    = 1
+        self._denom    = 4
         self._op       = "+"
-        self._expected = Fraction(3, 4)
+        self._expected = Fraction(2, 4)
         super().__init__(parent, back_callback, ach_store, missed_store, scores_store,
                          sessions_store=sessions_store)
 
@@ -64,8 +68,11 @@ class FracBasic(FractionBase):
         else:
             a = random.randint(2, d)
             b = random.randint(1, a - 1)       # a > b  → result > 0
-        self._num_a    = Fraction(a, d)
-        self._num_b    = Fraction(b, d)
+        # Store raw ints; the visual denominator must stay equal on both
+        # sides of the operator, even when a/d simplifies (e.g. 2/6).
+        self._a_num    = a
+        self._b_num    = b
+        self._denom    = d
         self._op       = op
         self._expected = (Fraction(a + b, d) if op == "+"
                           else Fraction(a - b, d))
@@ -74,17 +81,19 @@ class FracBasic(FractionBase):
     def get_expected(self) -> Fraction:
         return self._expected
 
+    def _q_left(self) -> str:
+        return f"{self._a_num}/{self._denom}"
+
+    def _q_right(self) -> str:
+        return f"{self._b_num}/{self._denom}"
+
     def update_question_display(self):
-        a = _fmt_frac(self._num_a)
-        b = _fmt_frac(self._num_b)
-        self.question_label.configure(text=f"{a}  {self._op}  {b}  =  ?")
+        self.question_label.configure(
+            text=f"{self._q_left()}  {self._op}  {self._q_right()}  =  ?"
+        )
 
     def correct_history_text(self, expected: Fraction) -> str:
-        a = _fmt_frac(self._num_a)
-        b = _fmt_frac(self._num_b)
-        return f"{a} {self._op} {b} = {_fmt_frac(expected)}"
+        return f"{self._q_left()} {self._op} {self._q_right()} = {_fmt_frac(expected)}"
 
     def wrong_history_text(self, given: str) -> str:
-        a = _fmt_frac(self._num_a)
-        b = _fmt_frac(self._num_b)
-        return f"{a} {self._op} {b} ≠ {given}"
+        return f"{self._q_left()} {self._op} {self._q_right()} ≠ {given}"
