@@ -63,6 +63,32 @@ v0.7.2  (2026-04-18)
 - No gameplay / balance / question-pool changes. frac_basic game
   logic and frac_base parser untouched.
 
+- Polish pass from first-run pupil test:
+    Tutorial window now enforces a 1200x720 minsize while mounted —
+    below that the 26-pt bold TITLE (e.g. "Fractions: Beginner —
+    adding and subtracting with the same denominator") clipped out
+    of the header. SlideshowFrame captures the prior minsize on
+    mount and restores it on back, so the main menu can shrink
+    again after the pupil exits. New constants TUTORIAL_MIN_W /
+    TUTORIAL_MIN_H at the top of slideshow_frame.py control the
+    floor; if div_basic or a future pack needs more room, bump
+    them in one place.
+    Slide 1 (frac_basic): removed the redundant bottom in-canvas
+    note. On narrow windows it competed with the Tk caption
+    underneath and visibly misaligned (centered vs. left-anchored
+    rendering). Arrow-labelled "numerator / denominator" callouts
+    on the left fraction carry the teaching now; caption carries
+    the summary.
+    Slide 2 (frac_basic): re-centered the denominator highlight
+    rings on the digit itself. The oval had been floating ~8 px
+    below the glyph; new y-range cy+4 to cy+40 wraps the digit
+    cleanly. Pill "both pieces are N-ths" unchanged in position.
+    Slide 6 (frac_basic): added an explicit 22-pt bold
+    "a/d op b/d = res/d" expression below the bar — connects the
+    coloured segments in the bar model to the fraction arithmetic
+    the pupil has to perform in the game. Story-text caption moved
+    down to keep the same overall slide footprint.
+
 - Note: update build.bat manually — change set VERSION=0.7.1 to
   set VERSION=0.7.2
 

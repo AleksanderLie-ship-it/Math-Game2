@@ -140,9 +140,9 @@ def _slide_1(canvas, ex, w, h):
                        text="denominator", fill=DIM,
                        font=("Helvetica", 10, "italic"))
 
-    draw_note(canvas,
-              "The numerator is the count. The denominator is the piece size.",
-              h - 30, color=MUTED, size=11)
+    # No bottom-of-canvas note on slide 1 — the caption below the card
+    # already carries "the top is the count; the bottom is the piece size",
+    # and the two text boxes competing on a narrow window looks misaligned.
 
 
 # ── Slide 2 — Same piece size ────────────────────────────────────────────────
@@ -162,9 +162,11 @@ def _slide_2(canvas, ex, w, h):
                        fill=INK, font=("Helvetica", 34, "bold"))
     _draw_fraction(canvas, f_cx[2], cy, b, d, den_color=GOOD)
 
-    # Highlight rings around the two denominators
+    # Highlight rings around the two denominators. The denominator glyph
+    # sits at cy + 34*0.65 ≈ cy + 22; we centre the oval on that point so
+    # the ring wraps the digit itself rather than floating below it.
     for cx_den in (f_cx[0], f_cx[2]):
-        canvas.create_oval(cx_den - 22, cy + 12, cx_den + 22, cy + 48,
+        canvas.create_oval(cx_den - 22, cy + 4, cx_den + 22, cy + 40,
                            outline=GOOD, width=2)
 
     # Pill connecting them
@@ -394,7 +396,16 @@ def _slide_6(canvas, ex, w, h):
         canvas.create_line(x, bar_y + bar_h, x, bar_y + bar_h + 6,
                            fill=DIM, width=1)
 
-    # Caption row underneath
+    # Explicit fraction expression below the bar — makes the bridge from
+    # "coloured pieces" to "fraction arithmetic" direct for the pupil.
+    # Accent colour on the left and GOOD on the result so the eye links
+    # each coloured segment in the bar to the matching part of the formula.
+    expr_y = bar_y + bar_h + 34
+    canvas.create_text(w / 2, expr_y,
+                       text=f"{a}/{d}   {_op_glyph(op)}   {b}/{d}   =   {res}/{d}",
+                       fill=ACCENT, font=("Helvetica", 22, "bold"))
+
+    # Caption row underneath the expression
     if op == "+":
         story = (f"Start with {a}/{d} shaded (blue). "
                  f"Shade {b} more piece{'s' if b != 1 else ''} (green). "
@@ -403,7 +414,7 @@ def _slide_6(canvas, ex, w, h):
         story = (f"Start with {a}/{d} shaded. "
                  f"Cross off {b} piece{'s' if b != 1 else ''} from the right. "
                  f"Count what is left: {res}. So the answer is {res}/{d}.")
-    canvas.create_text(w / 2, bar_y + bar_h + 38,
+    canvas.create_text(w / 2, expr_y + 38,
                        text=story, fill=MUTED,
                        font=("Helvetica", 11),
                        width=w - 80, justify="center")

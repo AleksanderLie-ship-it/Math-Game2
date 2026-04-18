@@ -58,6 +58,16 @@ WARN        = "#b45309"
 CANVAS_W    = 720
 CANVAS_H    = 340
 
+# Minimum root-window size while a tutorial is mounted. The full title
+# ("Fractions: Beginner — adding and subtracting with the same denominator"
+# at 26-point bold) runs ~1050 px; adding the 48-px header padding on each
+# side puts the realistic floor at ~1180 px. The Canvas is 720 px wide + 96
+# px of padding around it, so width is never the binding constraint on the
+# card — the banner title is. Height budget: header (~100) + card title
+# (~48) + canvas (340) + caption (~60) + nav (~56) + frame padding → ~720.
+TUTORIAL_MIN_W = 1200
+TUTORIAL_MIN_H = 720
+
 
 class SlideshowFrame:
     """Full-page tutorial slideshow. Mounted into a parent frame.
@@ -76,7 +86,14 @@ class SlideshowFrame:
                  slides: list[dict], examples: list[dict],
                  ach_store=None, game_id: str = None):
         self.parent        = parent
-        self.back_callback = back_callback
+        # Wrap back_callback so the root window's minsize is restored
+        # on exit. Without this, the tutorial's 1200x720 floor would
+        # stick around after the pupil returns to the menu.
+        self._prior_minsize = None
+        self._apply_tutorial_minsize()
+        self.back_callback = lambda _orig=back_callback: (
+            self._restore_prior_minsize(), _orig()
+        )
         self.title_text    = title
         self.lead_text     = lead
         self.slides        = list(slides)
@@ -260,7 +277,7 @@ class SlideshowFrame:
             except Exception:
                 pass   # never let the reward path crash the guide
 
-    # ============================================================ actions
+    # ============================================================ nav actions
 
     def _go_prev(self):
         if self._slide_idx > 0:
@@ -271,6 +288,50 @@ class SlideshowFrame:
         if self._slide_idx < len(self.slides) - 1:
             self._slide_idx += 1
             self._render_current()
+
+    # ============================================================ window sizing
+
+    def _apply_tutorial_minsize(self):
+        """Install TUTORIAL_MIN_W × TUTORIAL_MIN_H as the root minsize and
+        enlarge the window if it is currently smaller. Stores the prior
+        minsize so back() can put it back. Silent on any Tk error."""
+        try:
+            root = self.parent.winfo_toplevel()
+            # minsize() with no args returns the current (w, h). Some Tk
+            # versions return a list — normalise to a tuple of ints.
+            prior = root.minsize()
+            try:
+                self._prior_minsize = (int(prior[0]), int(prior[1]))
+            except Exception:
+                self._prior_minsize = (1, 1)
+
+            root.minsize(TUTORIAL_MIN_W, TUTORIAL_MIN_H)
+
+            # Nudge the window up to the floor if it is below it right now.
+            # update_idletasks() forces Tk to settle winfo_width/height to
+            # the current realised size before we read them.
+            root.update_idletasks()
+            cur_w = root.winfo_width()
+            cur_h = root.winfo_height()
+            new_w = max(cur_w, TUTORIAL_MIN_W)
+            new_h = max(cur_h, TUTORIAL_MIN_H)
+            if new_w != cur_w or new_h != cur_h:
+                root.geometry(f"{new_w}x{new_h}")
+        except Exception:
+            pass
+
+    def _restore_prior_minsize(self):
+        """Reinstate whatever minsize was active before the tutorial."""
+        try:
+            root = self.parent.winfo_toplevel()
+            if self._prior_minsize:
+                root.minsize(*self._prior_minsize)
+            else:
+                root.minsize(1, 1)
+        except Exception:
+            pass
+
+    # ============================================================ examples
 
     def _cycle_example(self):
         if len(self.examples) > 1:
