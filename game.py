@@ -10,7 +10,7 @@ To add a new game:
 """
 # Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
-__version__ = "0.7.2"
+__version__ = "0.7.3"
 
 import tkinter as tk
 from tkinter import ttk, messagebox

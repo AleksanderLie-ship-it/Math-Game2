@@ -65,7 +65,13 @@ CANVAS_H    = 340
 # px of padding around it, so width is never the binding constraint on the
 # card — the banner title is. Height budget: header (~100) + card title
 # (~48) + canvas (340) + caption (~60) + nav (~56) + frame padding → ~720.
-TUTORIAL_MIN_W = 1200
+#
+# v0.7.3 bump: frac_intermediate's first-cut title ran ~1140 px and
+# clipped on both ends at the previous 1200 floor. Title was shortened
+# at source ("unlike denominators"), but the floor also lifts to 1280 px
+# so any future pack with a slightly fatter title than frac_basic's
+# has room without a second re-ship.
+TUTORIAL_MIN_W = 1280
 TUTORIAL_MIN_H = 720
 
 

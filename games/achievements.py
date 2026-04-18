@@ -323,7 +323,7 @@ def _build_achievements():
 
         dict(id="tutorial_scholar",     name="Scholar",        icon="🧠",
              desc="Read three different tutorials.",
-             points=100, hidden=True, category="Learning", when="tutorial",
+             points=100, hidden=False, category="Learning", when="tutorial",
              check=lambda s, c: len(s.get("tutorials_viewed", [])) >= 3),
     ]
 

@@ -1,7 +1,81 @@
-0.7.2
+0.7.3
 
 CHANGELOG
 =========
+
+v0.7.3  (2026-04-18)
+--------------------
+- New tutorial pack: Fractions: Intermediate (add/subtract with different
+  denominators — the LCM / common-denominator case).
+  games/tutorials/tutorial_frac_intermediate.py — 8 slides × 5 curated
+  examples. Slide beats:
+    1  Read the question (highlight the mismatched bottoms with a ≠)
+    2  Pieces don't match (two same-length bars cut into a_den vs b_den)
+    3  Find the LCM (walk multiples of each bottom; ring the first hit)
+    4  Rewrite the LEFT fraction (×m top AND bottom, accent callouts)
+    5  Rewrite the RIGHT fraction (×n top AND bottom, same trick)
+    6  Now it's Beginner (same-denom add/subtract, numerator arrows down)
+    7  Reduce if possible (conditional per example: show ÷gcd step when
+       the result reduces, otherwise "gcd=1, already lowest" with a
+       fixed 2/6 → 1/3 mini demo so the technique is still visible)
+    8  Pitfall (fixed 2/3 + 1/4: ≠ 3/7 added bottoms, ≠ 3/12 forgot to
+       rewrite the tops — three-column ≠ layout)
+  Examples cycle 2/3+1/4, 1/2+1/3, 3/4−1/3, 2/5+1/2, 5/6−1/2 (the last
+  is the reducer: 2/6 → 1/3, so the pupil meets the ÷gcd step inside
+  the carousel). Raw ints throughout — fractions.Fraction was
+  deliberately avoided because its auto-reduction on construction
+  would turn "8/12" into "2/3" and hide the whole rewrite step.
+  Method pedagogy: "you can't count thirds and quarters together —
+  cut both into the same piece size (LCM) first; that reduces the
+  problem to the Beginner case."
+
+- Registered in TUTORIAL_REGISTRY (games/tutorials/__init__.py) in
+  curriculum order, after frac_basic. The Fractions — Operations row
+  of the Tutorials panel now shows live "Open guide" cards for both
+  Beginner and Intermediate; frac_advanced stays on the "Guide coming
+  soon" placeholder.
+
+- Scholar achievement un-hidden (games/achievements.py). The hidden
+  "Read three different tutorials" threshold (100 pts) was
+  unreachable with only div_basic and frac_basic shipped. v0.7.3
+  brings the live tutorial count to 3, so the threshold is now
+  achievable and the achievement becomes visible in the Trophy Room.
+
+- No gameplay / balance / question-pool changes. frac_intermediate
+  game logic, DENOM_PAIRS, FractionBase, and the in-game (i) entry
+  point are all untouched — the tutorials panel's "Open guide" card
+  is the only entry for now.
+
+- Polish pass from first-run pupil test:
+    Slide 1 (frac_intermediate): dropped the redundant below-fraction
+    denominator labels and stray ≠ that duplicated the already
+    WARN-coloured denominators in the equation. Replaced with a single
+    amber pill "the bottoms: a ≠ b" under the equation so the mismatch
+    is named once, cleanly.
+    Slides 4, 5, 7 (×m and ÷g callouts): the top/bottom accent labels
+    with inward-pointing arrows had arrow endpoints (cy±18 / cy±20)
+    that landed *inside* the numerator / denominator glyphs — the
+    arrowhead visibly pierced through the digits. Fix: pushed labels
+    out to cy±66 (slides 4/5, size=30 glyphs) and cy±70 (slide 7,
+    size=32 glyphs), with arrow tips stopping at cy±44 / cy±46 — 10 px
+    clear of the glyph edges in every case. Reduced-answer underline
+    on slide 7 also nudged down (cy+52 instead of cy+44) so it sits
+    below the size=34 glyph bottom rather than cutting through it.
+    Slide 7 copy: "gcd(x, y) = k" → "greatest common divisor = k" in
+    the pill (both branches). Pedagogical readability for 5th graders
+    who haven't met the abbreviation.
+    slideshow_frame.TUTORIAL_MIN_W bumped 1200 → 1280. The first-cut
+    intermediate title ("Fractions: Intermediate — adding and
+    subtracting with different denominators", 76 chars at 26-pt bold)
+    ran ~1140 px and clipped on both ends at the previous 1200 floor.
+    Fixed at source by shortening the title to "Fractions:
+    Intermediate — unlike denominators" (45 chars, shorter than
+    frac_basic's); the minsize bump leaves room for one slightly
+    fatter future title without another re-ship. Only edit to
+    slideshow_frame.py this release; draw helpers untouched.
+
+- Note: update build.bat manually — change set VERSION=0.7.2 to
+  set VERSION=0.7.3
 
 v0.7.2  (2026-04-18)
 --------------------
@@ -88,6 +162,40 @@ v0.7.2  (2026-04-18)
     coloured segments in the bar model to the fraction arithmetic
     the pupil has to perform in the game. Story-text caption moved
     down to keep the same overall slide footprint.
+
+- Polish pass 2 from second-run pupil test (arrow aim + pitfall
+  clutter):
+    Slide 3 (frac_basic): the working line used to be a single
+    centred "{a}  {op}  {b}  =  {res}" string, and the arrows from
+    the two numerators were aimed at sum_x ± 34 — an estimate that
+    missed because a 5-token centred string puts `b` at sum_x and
+    `a` roughly at sum_x-68 (not ± 34). Arrows visibly landed on
+    the "+" and the "=" glyphs instead of on the digits. Fix: split
+    the line into 5 individually-placed text items at known x
+    positions (x_a, x_op, x_b, x_eq, x_res) spaced by tok_gap=34,
+    then aim draw_arrow at x_a and x_b directly. Endpoint y moved
+    from sum_y-4 (inside the glyph) to sum_y-14 (just above the
+    top of the 22-pt cap height) so the arrowhead touches the
+    digit rather than overlapping it. Verified across all 5
+    cycled examples (headline 2/5+1/5 and the subtraction case
+    6/11-3/11 both clean).
+    Slide 8 (frac_basic): the pitfall slide had three stacked text
+    blocks saying the same thing — a verbose in-canvas body box
+    ("Adding the bottoms would turn fifths into tenths..."), a
+    warn line ("Keep the denominator. Always."), and the Tk
+    caption underneath carrying a third phrasing. Removed the
+    body box and its supporting rectangle + bbox-probe machinery;
+    the Tk caption already carries the longer reasoning. Added a
+    40-pt bold ≠ between the Correct and Wrong columns so the
+    contrast is carried *visually* rather than requiring two
+    paragraphs of prose. Pulled the two columns slightly further
+    apart (left_cx = w/2-170, right_cx = w/2+170; gap 48) to give
+    the ≠ room to breathe, and re-spaced the five items within
+    each column symmetrically around its centre. Replaced the
+    redundant warn line with a single amber take-home pill:
+    "The piece size never changes — so the bottom never changes."
+    Final warn "Keep the denominator. Always." kept at the very
+    bottom as the one-sentence mnemonic.
 
 - Note: update build.bat manually — change set VERSION=0.7.1 to
   set VERSION=0.7.2

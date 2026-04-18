@@ -1,7 +1,7 @@
 # Math Practice — Product Roadmap
 ## Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
-Current version: **v0.7.2**
+Current version: **v0.7.3**
 Target: word-of-mouth sellable at 199 NOK to Norwegian parents/homeschool networks
 
 ---
@@ -53,6 +53,7 @@ games/
     tutorials_panel.py        grid-of-cards entry screen
     tutorial_div_basic.py     first content pack
     tutorial_frac_basic.py    Fractions: Beginner pack (v0.7.2)
+    tutorial_frac_intermediate.py  Fractions: Intermediate pack (v0.7.3)
 
 assets/                       avatar packs + UI frames (used from v0.8.0)
 ```
@@ -136,6 +137,21 @@ it turns drill data into a language teachers and parents already trust.
 **Why here:** Makes the product a teaching tool, not just a quiz.
 Significant differentiator for the 199 NOK price point.
 
+**Content added in v0.7.3 (2026-04-18):**
+- Third content pack shipped: **tutorial_frac_intermediate** (Fractions:
+  Intermediate, 8 slides × 5 examples). LCM → rewrite both fractions →
+  same-denom combine → reduce-if-possible → pitfall. The 5 cycled
+  examples include one reducer (5/6 − 1/2 = 2/6 → 1/3) so the pupil
+  meets the ÷gcd step inside the carousel; slide 7 branches on gcd>1
+  per example with a fixed 2/6 → 1/3 mini-demo for the non-reducing
+  case so the technique is always visible. Pitfall is a three-column
+  layout vs. the two canonical wrongs (3/7 and 3/12) with ≠ glyphs
+  between the columns, same cleanup pattern as the frac_basic pitfall
+  slide.
+- Scholar achievement (Learning, 100 pts — "Read three different
+  tutorials") flipped from hidden to visible. Live tutorial count is
+  now 3, so the threshold is achievable.
+
 **Content added in v0.7.2 (2026-04-18):**
 - Second content pack shipped: **tutorial_frac_basic** (Fractions: Beginner,
   8 slides × 5 examples). Same-piece-size intuition → combine tops → keep
@@ -210,7 +226,7 @@ are the primary LK20 5. trinn differentiator.
 | `conv_basic`        | TODO    | Fraction ↔ decimal for "clean" denominators (2, 4, 5, 8, 10). Method: rewrite as tenths/hundredths. Place-value grid. |
 | `mult_intermediate` | TODO    | 2-digit × 1-digit partial products. Break 24×7 into (20×7)+(4×7). Arc arrows from each digit.              |
 | `div_intermediate`  | TODO    | Short division with remainder. Step the dividend digit-by-digit; carry remainder across. Reuse times-table visual from div_basic. |
-| `frac_intermediate` | TODO    | Different-denominator add where one divides the other (1/4 + 3/8). Scale up 1/4 → 2/8, then add. Emphasise "same denom, then add numerators". |
+| `frac_intermediate` | ✅ done | Shipped in v0.7.3 (8 slides × 5 examples; LCM → rewrite both → combine → reduce; three-column pitfall vs. 3/7 and 3/12). |
 | `conv_intermediate` | TODO    | Fraction ↔ percentage. Method: "% means out of 100". 3/4 → 75/100 → 75%. Bar model with 100 squares.        |
 | `mult_advanced`     | TODO    | 2-digit × 2-digit standard algorithm. Partial products stacked, carry rules. Biggest risk of slide overflow — keep numbers small (use 14×12 style examples). |
 | `div_advanced`      | TODO    | Long division. Decide method with Aleks: Norwegian "trappa"/staircase layout vs. English bring-down layout. |
