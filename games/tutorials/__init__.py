@@ -26,6 +26,7 @@ Notes
 # Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
 from . import tutorial_div_basic
+from . import tutorial_frac_basic
 
 
 # ── Registry ─────────────────────────────────────────────────────────────────
@@ -40,7 +41,7 @@ TUTORIAL_REGISTRY: dict[str, object] = {
     "div_basic":         tutorial_div_basic,
     # "div_intermediate":  tutorial_div_intermediate,    # to come
     # "div_advanced":      tutorial_div_advanced,        # to come
-    # "frac_basic":        tutorial_frac_basic,          # to come
+    "frac_basic":        tutorial_frac_basic,
     # "frac_intermediate": tutorial_frac_intermediate,   # to come
     # "frac_advanced":     tutorial_frac_advanced,       # to come
     # "conv_basic":        tutorial_conv_basic,          # to come

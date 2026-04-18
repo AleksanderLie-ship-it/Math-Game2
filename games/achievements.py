@@ -299,6 +299,34 @@ def _build_achievements():
              ) >= 3),
     ]
 
+    # ── Learning (tutorials) ──────────────────────────────────────────────────
+    #
+    # Checked with when="tutorial" instead of "end" / "live". The tutorials
+    # panel fires the check after every open / completion / example cycle
+    # so the pupil gets an immediate popup — the whole point of these is
+    # the dopamine boost for reading a guide, not the drill that follows.
+    achs += [
+        dict(id="tutorial_bookworm",    name="Bookworm",       icon="📖",
+             desc="Open your first tutorial guide.",
+             points=25,  hidden=False, category="Learning", when="tutorial",
+             check=lambda s, c: len(s.get("tutorials_viewed", [])) >= 1),
+
+        dict(id="tutorial_finished",    name="Full Walkthrough", icon="🎓",
+             desc="Read a tutorial all the way to the last slide.",
+             points=50,  hidden=False, category="Learning", when="tutorial",
+             check=lambda s, c: len(s.get("tutorials_finished", [])) >= 1),
+
+        dict(id="tutorial_next_example", name="Curious Mind",  icon="🔍",
+             desc="Use 'Next example' inside a tutorial.",
+             points=20,  hidden=False, category="Learning", when="tutorial",
+             check=lambda s, c: s.get("tutorial_example_cycled", False)),
+
+        dict(id="tutorial_scholar",     name="Scholar",        icon="🧠",
+             desc="Read three different tutorials.",
+             points=100, hidden=True, category="Learning", when="tutorial",
+             check=lambda s, c: len(s.get("tutorials_viewed", [])) >= 3),
+    ]
+
     # ── Hidden / secrets ───────────────────────────────────────────────────────
     achs += [
         dict(id="speed_demon", name="Speed Demon", icon="⚡",
@@ -331,6 +359,6 @@ ACHIEVEMENTS_BY_ID = {a["id"]: a for a in ACHIEVEMENTS}
 # Ordered display categories
 CATEGORY_ORDER = [
     "Milestones", "Streaks", "Game Mastery",
-    "Practice", "Exploration", "Dedication",
+    "Practice", "Learning", "Exploration", "Dedication",
     "Leaderboard", "Secrets",
 ]

@@ -1,7 +1,7 @@
 # Math Practice — Product Roadmap
 ## Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
-Current version: **v0.7.1**
+Current version: **v0.7.2**
 Target: word-of-mouth sellable at 199 NOK to Norwegian parents/homeschool networks
 
 ---
@@ -48,9 +48,11 @@ games/
 
   tutorials/                  added v0.7.0 — see v0.7 section below
     __init__.py               TUTORIAL_REGISTRY
-    slideshow_frame.py        reusable SlideshowFrame + drawing helpers
+    slideshow_frame.py        reusable SlideshowFrame + drawing helpers +
+                              award_tutorial_achievements / toast (v0.7.2)
     tutorials_panel.py        grid-of-cards entry screen
     tutorial_div_basic.py     first content pack
+    tutorial_frac_basic.py    Fractions: Beginner pack (v0.7.2)
 
 assets/                       avatar packs + UI frames (used from v0.8.0)
 ```
@@ -134,6 +136,19 @@ it turns drill data into a language teachers and parents already trust.
 **Why here:** Makes the product a teaching tool, not just a quiz.
 Significant differentiator for the 199 NOK price point.
 
+**Content added in v0.7.2 (2026-04-18):**
+- Second content pack shipped: **tutorial_frac_basic** (Fractions: Beginner,
+  8 slides × 5 examples). Same-piece-size intuition → combine tops → keep
+  bottom → answer → bar model → subtraction mirror → pitfall. Examples
+  keep results in raw unreduced form to match how the game renders them.
+- New "Learning" achievement category wired to a new `when="tutorial"`
+  trigger: Bookworm, Full Walkthrough, Curious Mind (visible) + Scholar
+  (hidden, 3 different tutorials). Popups fire the moment the pupil earns
+  them — not at next session end — via a shared toast helper in
+  `slideshow_frame.py`.
+- `AchievementsStore` gained `tutorials_viewed`, `tutorials_finished`,
+  `tutorial_example_cycled` stats and three idempotent recorder methods.
+
 **Bugs fixed in v0.7.1 (2026-04-18):**
 - Conversions: Intermediate — "Convert 38% to fraction" now accepts both
   3/8 and 38/100 (= 19/50). Same fix applies to every rounded pool pair
@@ -191,7 +206,7 @@ are the primary LK20 5. trinn differentiator.
 |---------------------|---------|-------------------------------------------------------------------------------------------------------------|
 | `mult_basic`        | SKIP    | Pure memorisation; panel renders "No guide needed" placeholder. Intentional, do not add.                    |
 | `div_basic`         | ✅ done | Shipped in v0.7.0.                                                                                          |
-| `frac_basic`        | TODO    | Same-denominator add/sub. Visual bar model (8 bars, shade 3 + shade 2 = shade 5). Stress "denominator unchanged". |
+| `frac_basic`        | ✅ done | Shipped in v0.7.2 (8 slides × 5 examples; same-piece-size intuition + bar model + pitfall).                  |
 | `conv_basic`        | TODO    | Fraction ↔ decimal for "clean" denominators (2, 4, 5, 8, 10). Method: rewrite as tenths/hundredths. Place-value grid. |
 | `mult_intermediate` | TODO    | 2-digit × 1-digit partial products. Break 24×7 into (20×7)+(4×7). Arc arrows from each digit.              |
 | `div_intermediate`  | TODO    | Short division with remainder. Step the dividend digit-by-digit; carry remainder across. Reuse times-table visual from div_basic. |

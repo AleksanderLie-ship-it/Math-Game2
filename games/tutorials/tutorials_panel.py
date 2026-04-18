@@ -20,7 +20,7 @@ from ..achievements import (
 )
 from . import TUTORIAL_REGISTRY, INTENTIONAL_NO_GUIDE
 from .slideshow_frame import (
-    SlideshowFrame,
+    SlideshowFrame, award_tutorial_achievements,
     BG, CARD_BG, CARD_BORDER, INK, MUTED, DIM, SOFT, FAINT, ACCENT, GOOD,
 )
 
@@ -297,6 +297,17 @@ class TutorialsPanel:
         if mod is None:
             return
 
+        # Record the "opened" event before rebuilding the UI so the
+        # Bookworm / Scholar achievements can fire a toast that the
+        # SlideshowFrame mounted below will not cover. earn() and
+        # record_tutorial_viewed() are both idempotent, so repeated
+        # opens stay silent.
+        try:
+            self._as.record_tutorial_viewed(gid)
+            award_tutorial_achievements(self.parent, self._as)
+        except Exception:
+            pass
+
         # Clear the current panel contents and swap in a SlideshowFrame
         for w in self.parent.winfo_children():
             w.destroy()
@@ -308,6 +319,8 @@ class TutorialsPanel:
             lead          = getattr(mod, "LEAD", ""),
             slides        = getattr(mod, "SLIDES", []),
             examples      = getattr(mod, "EXAMPLES", [{}]),
+            ach_store     = self._as,
+            game_id       = gid,
         )
 
     def _return_to_panel(self):

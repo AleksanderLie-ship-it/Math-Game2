@@ -1,7 +1,70 @@
-0.7.1
+0.7.2
 
 CHANGELOG
 =========
+
+v0.7.2  (2026-04-18)
+--------------------
+- New tutorial pack: Fractions: Beginner (same-denominator add/subtract).
+  games/tutorials/tutorial_frac_basic.py — 8 slides × 5 curated examples.
+  Slide beats:
+    1  Read the question (numerator / denominator labelled)
+    2  Same piece size (highlight denominators; "both are fifths")
+    3  Combine the tops (arrows from the two numerators; only the
+       numerators combine, operator-agnostic)
+    4  Keep the bottom (curved arrow showing the denominator stays)
+    5  Answer (result double-underlined)
+    6  See it in pieces (bar model of d segments; shade / cross off)
+    7  Subtraction mirror (fixed 4/7 − 1/7 = 3/7 — method is identical)
+    8  The pitfall (fixed 2/5 + 1/5 ≠ 3/10 with one-line explanation)
+  Examples cycle 2/5+1/5, 3/8+4/8, 5/9−2/9, 1/6+4/6, 6/11−3/11; results
+  stay in raw unreduced form to match how frac_basic.py renders them.
+  Method pedagogy: denominator is the piece size (unit), numerator is
+  the count — "2 fifths + 1 fifth = 3 fifths", like counting apples.
+- Registered in TUTORIAL_REGISTRY (games/tutorials/__init__.py) in
+  curriculum order, after div_basic and before the frac_intermediate /
+  frac_advanced TODOs. The Fractions — Operations row of the Tutorials
+  panel now shows a live "Open guide" card for Beginner; the other two
+  stay on the "Guide coming soon" placeholder.
+
+- New "Learning" achievement category (4 entries, new when="tutorial"
+  trigger — fires immediately from the tutorials panel / slideshow
+  rather than from session end, so the pupil gets the popup the moment
+  they earn it):
+    Bookworm           📖 +25   Open your first tutorial guide.
+    Full Walkthrough   🎓 +50   Read a tutorial all the way to the last slide.
+    Curious Mind       🔍 +20   Use the "Next example" button inside a tutorial.
+    Scholar            🧠 +100  Read three different tutorials. (Hidden)
+  CATEGORY_ORDER updated to slot "Learning" between "Practice" and
+  "Exploration".
+
+- New achievement stats in AchievementsStore:
+    tutorials_viewed        : list[str]  — unique game_ids opened
+    tutorials_finished      : list[str]  — unique game_ids read to last slide
+    tutorial_example_cycled : bool       — "Next example" has been used once
+  Store API extended with three idempotent recorders:
+    record_tutorial_viewed(game_id)
+    record_tutorial_finished(game_id)
+    mark_tutorial_example_cycled()
+
+- Slideshow wiring:
+    games/tutorials/slideshow_frame.py now accepts optional ach_store
+    and game_id kwargs. When supplied it reports completion-of-last-slide
+    and first-example-cycle back into the store, then fires
+    award_tutorial_achievements() to popup any newly earned ones.
+    Module-level award_tutorial_achievements(parent, ach_store) and
+    _show_achievement_popup(parent, ach, slot) are a local copy of the
+    toast helper in base_game — kept self-contained so the tutorial
+    code path never has to reach into BaseGame.
+    games/tutorials/tutorials_panel.py passes ach_store + game_id
+    through on _launch_tutorial and records the "opened" event with
+    an immediate achievement check.
+
+- No gameplay / balance / question-pool changes. frac_basic game
+  logic and frac_base parser untouched.
+
+- Note: update build.bat manually — change set VERSION=0.7.1 to
+  set VERSION=0.7.2
 
 v0.7.1  (2026-04-18)
 --------------------

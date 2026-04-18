@@ -73,13 +73,22 @@ class SlideshowFrame:
 
     def __init__(self, parent, back_callback,
                  title: str, lead: str,
-                 slides: list[dict], examples: list[dict]):
+                 slides: list[dict], examples: list[dict],
+                 ach_store=None, game_id: str = None):
         self.parent        = parent
         self.back_callback = back_callback
         self.title_text    = title
         self.lead_text     = lead
         self.slides        = list(slides)
         self.examples      = list(examples) if examples else [{}]
+
+        # Optional achievement hooks (v0.7.2). When both are supplied the
+        # slideshow reports completion-of-last-slide and first-example-cycle
+        # back into the pupil's profile so the "Learning" achievements can
+        # fire immediately with a toast popup.
+        self._as            = ach_store
+        self._game_id       = game_id
+        self._finished_sent = False
 
         self._slide_idx    = 0
         self._example_idx  = 0
@@ -239,6 +248,18 @@ class SlideshowFrame:
         self._prev_btn.config(state="normal" if self._slide_idx > 0 else "disabled")
         self._next_btn.config(state="normal" if self._slide_idx < total - 1 else "disabled")
 
+        # If we just reached the final slide, record completion exactly once.
+        if (not self._finished_sent
+                and self._slide_idx == total - 1
+                and self._as is not None
+                and self._game_id):
+            self._finished_sent = True
+            try:
+                self._as.record_tutorial_finished(self._game_id)
+                award_tutorial_achievements(self.parent, self._as)
+            except Exception:
+                pass   # never let the reward path crash the guide
+
     # ============================================================ actions
 
     def _go_prev(self):
@@ -255,6 +276,12 @@ class SlideshowFrame:
         if len(self.examples) > 1:
             self._example_idx = (self._example_idx + 1) % len(self.examples)
             self._render_current()
+            if self._as is not None:
+                try:
+                    self._as.mark_tutorial_example_cycled()
+                    award_tutorial_achievements(self.parent, self._as)
+                except Exception:
+                    pass
 
 
 # ── Shared drawing helpers ───────────────────────────────────────────────────
@@ -282,6 +309,89 @@ def draw_arrow(canvas, x1, y1, x2, y2, color=ACCENT, width=2, dash=None):
     if dash:
         kwargs["dash"] = dash
     canvas.create_line(x1, y1, x2, y2, **kwargs)
+
+
+# ── Achievement popup (shared with base_game.BaseGame) ──────────────────────
+#
+# The tutorials panel and the slideshow both need to toast a "Learning"
+# achievement the moment it is earned. BaseGame has its own copy for
+# end-of-session popups; rather than reach across and borrow it we duplicate
+# the 30-line toast here so the tutorial code path stays self-contained.
+# Any style tweak should be applied to both to keep them looking identical.
+
+def _show_achievement_popup(parent, ach, slot: int = 0):
+    """Non-blocking toast popup, stackable via `slot`."""
+    try:
+        root = parent.winfo_toplevel()
+        root.update_idletasks()
+
+        w, h    = 300, 82
+        margin  = 16
+        spacing = h + 6
+        rx = root.winfo_x() + root.winfo_width()  - w - margin
+        ry = root.winfo_y() + root.winfo_height() - margin - h - slot * spacing
+
+        popup = tk.Toplevel(root)
+        popup.overrideredirect(True)
+        popup.attributes("-topmost", True)
+        popup.configure(bg="#1e293b")
+        popup.geometry(f"{w}x{h}+{rx}+{ry}")
+
+        f = tk.Frame(popup, bg="#1e293b", padx=14, pady=10)
+        f.pack(fill=tk.BOTH, expand=True)
+
+        tk.Label(f, text="  Achievement Unlocked!",
+                 font=("Helvetica", 8, "bold"),
+                 bg="#1e293b", fg="#f59e0b").pack(anchor="w")
+        tk.Label(f, text=f"  {ach.get('icon', '')}  {ach.get('name', '')}",
+                 font=("Helvetica", 11, "bold"),
+                 bg="#1e293b", fg="white").pack(anchor="w")
+        tk.Label(f, text=f"  +{ach.get('points', 0)} points",
+                 font=("Helvetica", 9),
+                 bg="#1e293b", fg="#94a3b8").pack(anchor="w")
+
+        popup.after(3500, popup.destroy)
+    except Exception:
+        pass   # a cosmetic glitch must never crash the tutorial
+
+
+def award_tutorial_achievements(parent, ach_store):
+    """Check all `when='tutorial'` achievements, earn new ones, show popups.
+
+    Safe to call as often as you like — `AchievementsStore.earn` is
+    idempotent and returns False when the id has already been earned.
+    """
+    from ..achievements import ACHIEVEMENTS  # local import avoids cycle
+
+    if ach_store is None:
+        return []
+    try:
+        stats = ach_store.get_stats()
+    except Exception:
+        return []
+
+    newly_earned = []
+    for ach in ACHIEVEMENTS:
+        if ach.get("when") != "tutorial":
+            continue
+        if ach_store.has(ach["id"]):
+            continue
+        try:
+            if ach["check"](stats, {}):
+                if ach_store.earn(ach["id"], ach["points"]):
+                    newly_earned.append(ach)
+        except Exception:
+            continue
+
+    for i, ach in enumerate(newly_earned):
+        try:
+            parent.after(
+                i * 600,
+                lambda a=ach, s=i: _show_achievement_popup(parent, a, s),
+            )
+        except Exception:
+            pass
+    return newly_earned
 
 
 def draw_pill(canvas, cx, cy, text, bg=SOFT, fg=INK, pad=10, size=13, bold=True):

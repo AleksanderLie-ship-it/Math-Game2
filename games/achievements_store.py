@@ -11,17 +11,22 @@ import os
 import pathlib
 
 _DEFAULT_STATS = {
-    "total_correct":    0,
-    "best_streak_ever": 0,
-    "days_played":      [],
-    "games_played":     [],
-    "per_game":         {},
-    "missed_attempted": False,
-    "missed_cleared":   False,
-    "missed_resilient": False,
-    "lb_positions":     {},
-    "night_owl":        False,
-    "early_bird":       False,
+    "total_correct":           0,
+    "best_streak_ever":        0,
+    "days_played":             [],
+    "games_played":            [],
+    "per_game":                {},
+    "missed_attempted":        False,
+    "missed_cleared":          False,
+    "missed_resilient":        False,
+    "lb_positions":            {},
+    "night_owl":               False,
+    "early_bird":              False,
+    # Tutorial-tracking fields (added v0.7.2). Fuel the "Learning"
+    # achievement category; nothing else depends on them.
+    "tutorials_viewed":        [],      # unique game_ids opened from the Tutorials panel
+    "tutorials_finished":      [],      # unique game_ids read to the last slide
+    "tutorial_example_cycled": False,   # flipped True the first time the pupil uses "Next example"
 }
 
 
@@ -122,3 +127,28 @@ class AchievementsStore:
         """Set a single stat flag (e.g. missed_attempted)."""
         self._data["stats"][key] = value
         self._save()
+
+    # --------------------------------------------------------- tutorial stats
+
+    def record_tutorial_viewed(self, game_id: str):
+        """Mark that the tutorial for game_id was opened. Idempotent."""
+        s = self._data["stats"]
+        viewed = s.setdefault("tutorials_viewed", [])
+        if game_id and game_id not in viewed:
+            viewed.append(game_id)
+            self._save()
+
+    def record_tutorial_finished(self, game_id: str):
+        """Mark that the tutorial for game_id was read to the last slide."""
+        s = self._data["stats"]
+        done = s.setdefault("tutorials_finished", [])
+        if game_id and game_id not in done:
+            done.append(game_id)
+            self._save()
+
+    def mark_tutorial_example_cycled(self):
+        """Flip the 'Next example button used at least once' flag."""
+        s = self._data["stats"]
+        if not s.get("tutorial_example_cycled", False):
+            s["tutorial_example_cycled"] = True
+            self._save()
