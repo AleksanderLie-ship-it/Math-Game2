@@ -217,18 +217,29 @@ def _slide_3(canvas, ex, w, h):
     _draw_fraction(canvas, f_cx[3] + 28, cy_top, "?", d,
                    num_color=ACCENT, den_color=DIM)
 
-    # Arrows from the two numerators down to a "sum box"
-    sum_y = cy_top + 92
-    sum_x = w / 2
-    draw_arrow(canvas, f_cx[0], cy_top - 28, sum_x - 34, sum_y - 4,
-               color=ACCENT, width=2)
-    draw_arrow(canvas, f_cx[2], cy_top - 28, sum_x + 34, sum_y - 4,
-               color=ACCENT, width=2)
+    # The numerator-only working — place each token at a known x so the
+    # arrows from above can land on the actual digits (not on the operator
+    # or the equals sign).
+    sum_y   = cy_top + 92
+    sum_x   = w / 2
+    tok_gap = 34
+    x_a   = sum_x - 2 * tok_gap
+    x_op  = sum_x - 1 * tok_gap
+    x_b   = sum_x
+    x_eq  = sum_x + 1 * tok_gap
+    x_res = sum_x + 2 * tok_gap
+    for tx, ts in ((x_a, str(a)), (x_op, _op_glyph(op)),
+                   (x_b, str(b)), (x_eq, "="), (x_res, str(res))):
+        canvas.create_text(tx, sum_y, text=ts, fill=ACCENT,
+                           font=("Helvetica", 22, "bold"))
 
-    # The numerator-only working
-    canvas.create_text(sum_x, sum_y,
-                       text=f"{a}  {_op_glyph(op)}  {b}  =  {res}",
-                       fill=ACCENT, font=("Helvetica", 22, "bold"))
+    # Arrows from the two numerators down to the matching digit below.
+    # Endpoint y sits just above the top of the 22pt glyph (~sum_y - 14)
+    # so the arrowhead touches the digit rather than overlapping it.
+    draw_arrow(canvas, f_cx[0], cy_top - 28, x_a, sum_y - 14,
+               color=ACCENT, width=2)
+    draw_arrow(canvas, f_cx[2], cy_top - 28, x_b, sum_y - 14,
+               color=ACCENT, width=2)
 
     piece_plural   = _denom_name(d)
     piece_singular = _piece_singular(d)
@@ -483,61 +494,55 @@ def _slide_8(canvas, ex, w, h):
     draw_note(canvas, "Watch out for this common mistake.", 40,
               color=DIM, size=11)
 
-    cy = 120
-    left_cx  = w / 2 - 150
-    right_cx = w / 2 + 150
-    gap = 50
+    cy = 150
+    # Pull the two columns slightly further apart than before so the
+    # big ≠ between them has room to breathe.
+    left_cx  = w / 2 - 170
+    right_cx = w / 2 + 170
+    gap = 48
 
-    # Left column: correct
     tk_red = "#dc2626"
-    canvas.create_text(left_cx, cy - 70, text="Correct",
+
+    # Left column: correct (2/5 + 1/5 = 3/5)
+    canvas.create_text(left_cx, cy - 78, text="Correct",
                        fill=GOOD, font=("Helvetica", 11, "bold"))
-    _draw_fraction(canvas, left_cx - gap * 0.9, cy, 2, 5, size=24)
-    canvas.create_text(left_cx - 8, cy, text="+",
+    _draw_fraction(canvas, left_cx - gap * 1.3, cy, 2, 5, size=24)
+    canvas.create_text(left_cx - gap * 0.4, cy, text="+",
                        fill=INK, font=("Helvetica", 24, "bold"))
-    _draw_fraction(canvas, left_cx + gap * 0.9, cy, 1, 5, size=24)
-    canvas.create_text(left_cx + gap * 1.7, cy, text="=",
+    _draw_fraction(canvas, left_cx + gap * 0.5, cy, 1, 5, size=24)
+    canvas.create_text(left_cx + gap * 1.3, cy, text="=",
                        fill=DIM, font=("Helvetica", 24, "bold"))
-    _draw_fraction(canvas, left_cx + gap * 2.5, cy, 3, 5, size=24,
+    _draw_fraction(canvas, left_cx + gap * 2.1, cy, 3, 5, size=24,
                    num_color=GOOD, den_color=GOOD)
 
-    # Right column: wrong
-    canvas.create_text(right_cx, cy - 70, text="Wrong",
+    # Right column: wrong (2/5 + 1/5 ≟ 3/10)
+    canvas.create_text(right_cx, cy - 78, text="Wrong",
                        fill=tk_red, font=("Helvetica", 11, "bold"))
-    _draw_fraction(canvas, right_cx - gap * 0.9, cy, 2, 5, size=24,
+    _draw_fraction(canvas, right_cx - gap * 1.3, cy, 2, 5, size=24,
                    num_color=DIM, den_color=DIM)
-    canvas.create_text(right_cx - 8, cy, text="+",
+    canvas.create_text(right_cx - gap * 0.4, cy, text="+",
                        fill=DIM, font=("Helvetica", 24, "bold"))
-    _draw_fraction(canvas, right_cx + gap * 0.9, cy, 1, 5, size=24,
+    _draw_fraction(canvas, right_cx + gap * 0.5, cy, 1, 5, size=24,
                    num_color=DIM, den_color=DIM)
-    canvas.create_text(right_cx + gap * 1.7, cy, text="=",
+    canvas.create_text(right_cx + gap * 1.3, cy, text="=",
                        fill=DIM, font=("Helvetica", 24, "bold"))
-    _draw_fraction(canvas, right_cx + gap * 2.5, cy, 3, 10, size=24,
+    _draw_fraction(canvas, right_cx + gap * 2.1, cy, 3, 10, size=24,
                    num_color=tk_red, den_color=tk_red)
 
-    # Big "not equals" between the two columns (small, just visually)
-    # — actually omitted; labels carry the contrast clearly.
+    # Big ≠ between the two columns carries the contrast visually, so
+    # we don't need a verbose explanation box below — the Tk caption
+    # under the canvas already tells the longer story.
+    canvas.create_text(w / 2, cy, text="≠",
+                       fill=MUTED, font=("Helvetica", 40, "bold"))
 
-    # Explanation strip — measure-then-draw for a tight centred pill.
-    body = ("Adding the bottoms would turn fifths into tenths — "
-            "the piece size would magically shrink. The pieces did not "
-            "change size, so the denominator does not change either.")
-    probe = canvas.create_text(0, -9999, text=body,
-                               font=("Helvetica", 11), anchor="w")
-    bx1, _, bx2, _ = canvas.bbox(probe)
-    canvas.delete(probe)
-    box_w = min(bx2 - bx1 + 32, w - 80)
-    box_x = (w - box_w) / 2
-    box_y = h - 70
-    canvas.create_rectangle(box_x, box_y - 24, box_x + box_w, box_y + 24,
-                            fill=SOFT, outline="")
-    canvas.create_text(w / 2, box_y, text=body,
-                       fill=MUTED, font=("Helvetica", 11),
-                       width=box_w - 24, justify="center")
+    # The pedagogical take-home — short, punchy, one line.
+    draw_pill(canvas, w / 2, cy + 92,
+              "The piece size never changes — so the bottom never changes.",
+              bg="#fef3c7", fg=WARN, size=11)
 
     draw_note(canvas,
               "Keep the denominator. Always.",
-              h - 22, color=WARN, size=11)
+              h - 28, color=WARN, size=12)
 
 
 # ── Slide list (what the framework consumes) ─────────────────────────────────
