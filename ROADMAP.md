@@ -1,7 +1,7 @@
 # Math Practice — Product Roadmap
 ## Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
-Current version: **v0.7.3**
+Current version: **v0.7.4**
 Target: word-of-mouth sellable at 199 NOK to Norwegian parents/homeschool networks
 
 ---
@@ -54,6 +54,7 @@ games/
     tutorial_div_basic.py     first content pack
     tutorial_frac_basic.py    Fractions: Beginner pack (v0.7.2)
     tutorial_frac_intermediate.py  Fractions: Intermediate pack (v0.7.3)
+    tutorial_conv_basic.py    Conversions: Beginner pack (v0.7.4)
 
 assets/                       avatar packs + UI frames (used from v0.8.0)
 ```
@@ -136,6 +137,26 @@ it turns drill data into a language teachers and parents already trust.
 ### v0.7.0 — Tutorial Slideshow  ✅ FRAMEWORK SHIPPED (2026-04-17)
 **Why here:** Makes the product a teaching tool, not just a quiz.
 Significant differentiator for the 199 NOK price point.
+
+**Content added in v0.7.4 (2026-04-19):**
+- Fourth content pack shipped: **tutorial_conv_basic** (Conversions:
+  Beginner, 8 slides × 5 examples). Place-value anchor (tenths bar +
+  hundredths 10×10 grid) → find the bridge (×mult to land on 10 / 100
+  / 1000) → apply the rewrite → read / simplify → fixed 3/4 ↔ 0.75
+  round-trip demo → full one-line chain → three-column pitfall (✓ 3/8
+  = 0.375 vs. ✗ 3/8 ≠ 0.38 vs. ✗ 1/4 ≠ 0.4). The 5 cycled examples
+  include one reverse-direction example (0.4 → 2/5, ÷2 reduce) so the
+  pupil meets dec_to_frac inside the carousel, plus a mult=1 edge case
+  (3/10, already tenths) that the bridge slide special-cases. Slides
+  3, 4, 5, 7 dispatch on direction so the reverse example reads
+  naturally. Raw ints throughout; fractions.Fraction is deliberately
+  not imported because its auto-reduction would hide the rewrite step.
+- Tutorial count is now 4 (div_basic, frac_basic, frac_intermediate,
+  conv_basic). Scholar achievement threshold is unchanged at 3 and
+  already reachable from v0.7.3; v0.7.4 just adds a fourth path.
+- No gameplay changes. conv_basic game logic (ConvBasic, _PAIRS,
+  FractionBase) untouched. Tutorials panel's "Open guide" card is the
+  only entry for now.
 
 **Content added in v0.7.3 (2026-04-18):**
 - Third content pack shipped: **tutorial_frac_intermediate** (Fractions:
@@ -223,7 +244,7 @@ are the primary LK20 5. trinn differentiator.
 | `mult_basic`        | SKIP    | Pure memorisation; panel renders "No guide needed" placeholder. Intentional, do not add.                    |
 | `div_basic`         | ✅ done | Shipped in v0.7.0.                                                                                          |
 | `frac_basic`        | ✅ done | Shipped in v0.7.2 (8 slides × 5 examples; same-piece-size intuition + bar model + pitfall).                  |
-| `conv_basic`        | TODO    | Fraction ↔ decimal for "clean" denominators (2, 4, 5, 8, 10). Method: rewrite as tenths/hundredths. Place-value grid. |
+| `conv_basic`        | ✅ done | Shipped in v0.7.4 (8 slides × 5 examples; place-value anchor → bridge to 10/100/1000 → rewrite → read; three-column pitfall vs. 0.38 and 0.4). |
 | `mult_intermediate` | TODO    | 2-digit × 1-digit partial products. Break 24×7 into (20×7)+(4×7). Arc arrows from each digit.              |
 | `div_intermediate`  | TODO    | Short division with remainder. Step the dividend digit-by-digit; carry remainder across. Reuse times-table visual from div_basic. |
 | `frac_intermediate` | ✅ done | Shipped in v0.7.3 (8 slides × 5 examples; LCM → rewrite both → combine → reduce; three-column pitfall vs. 3/7 and 3/12). |

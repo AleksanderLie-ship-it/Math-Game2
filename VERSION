@@ -1,7 +1,72 @@
-0.7.3
+0.7.4
 
 CHANGELOG
 =========
+
+v0.7.4  (2026-04-19)
+--------------------
+- New tutorial pack: Conversions: Beginner (fraction ↔ decimal for clean
+  denominators 2, 4, 5, 8, 10 — the "rewrite as tenths / hundredths /
+  thousandths" method).
+  games/tutorials/tutorial_conv_basic.py — 8 slides × 5 curated examples.
+  Slide beats:
+    1  Read the question (prompt pill: "a decimal is a fraction with 10,
+       100, or 1000 on the bottom — that's the whole trick")
+    2  Place-value anchor (tenths bar with 1/10 shaded + hundredths 10×10
+       grid with 7/100 shaded; spell-out pedagogy "1 digit = tenths,
+       2 digits = hundredths, 3 digits = thousandths")
+    3  Find the bridge — direction-dispatched. frac_to_dec: "what × den
+       lands on 10 / 100 / 1000?" with ×mult dashed call-out. dec_to_frac:
+       "count the digits after the point → that picks the denominator".
+       Special-case: when mult=1 (the 3/10 example) the slide says
+       "already tenths, skip the bridge"
+    4  Apply the rewrite — direction-dispatched. frac_to_dec: equation
+       num/den × mult/mult = target_num/target_den with ×m labels at
+       cy±66 / tips cy±44 on size=30 glyphs. dec_to_frac: dec_str →
+       target_num/target_den with labels at cy±72 / tips cy±48 on
+       size=34 glyph
+    5  Read / simplify — direction-dispatched. frac_to_dec: double
+       underline under the result decimal. dec_to_frac: ÷g / ÷g callouts
+       reducing target to frac_num/frac_den at cy±70 / cy±46 (size=32),
+       with gcd=1 fallback branch kept for future-proofing
+    6  Round-trip demo (fixed 3/4 ↔ 0.75, always visible regardless of
+       cycled example — two columns showing ×25 forward and ÷25 reverse.
+       Anchor pill: "multiply up to a power of ten ↔ divide by the
+       greatest common divisor")
+    7  Full chain (one-line compressed render of the current example
+       with per-stage labels)
+    8  Pitfalls (three-column ≠ layout: ✓ 3/8=0.375 | ✗ 3/8≠0.38 "can't
+       just copy the digits" | ✗ 1/4≠0.4 "4 is the piece count, not the
+       decimal place")
+  Examples cycle 3/4↔0.75 (×25), 1/2→0.5 (×5), 3/8→0.375 (×125), 0.4→2/5
+  (÷2 reverse direction), 3/10→0.3 (mult=1 edge case). Four frac_to_dec
+  examples + one dec_to_frac so the pupil meets the reverse direction
+  inside the carousel without diluting the core method.
+  Pedagogy: "a decimal is just a fraction whose bottom is already 10,
+  100, or 1000 — so to convert, multiply top and bottom up to one of
+  those denominators, then read off the digits."
+  Raw ints throughout — fractions.Fraction deliberately not imported
+  because its auto-reduction would hide the rewrite step.
+
+- Registered in TUTORIAL_REGISTRY (games/tutorials/__init__.py) in
+  curriculum order, after frac_intermediate. The Conversions —
+  Fractions ↔ Decimals row of the Tutorials panel now shows a live
+  "Open guide" card for Beginner; conv_intermediate and conv_advanced
+  stay on the "Guide coming soon" placeholder.
+
+- Tutorial count bumped from 3 to 4. Scholar achievement (read three
+  different tutorials, 100 pts) remains reachable — threshold was
+  already achievable in v0.7.3 and now has an extra path.
+
+- No gameplay / balance / question-pool changes. conv_basic game logic
+  (ConvBasic class, _PAIRS pool, FractionBase) is untouched — the
+  tutorials panel's "Open guide" card is the only entry for now; the
+  in-game (i) entry point will be wired in a later version when the
+  tutorial-from-game flow is added.
+
+- build.bat VERSION line is pinned to 0.7.3 on disk (read-only mount
+  blocked the edit this session). Update manually to 0.7.4 before
+  running a build, or the exe filename will still say v0.7.3.
 
 v0.7.3  (2026-04-18)
 --------------------
