@@ -482,3 +482,58 @@ def draw_pill(canvas, cx, cy, text, bg=SOFT, fg=INK, pad=10, size=13, bold=True)
     canvas.create_oval(x2 - 2 * r, y1, x2, y2, fill=bg, outline=bg)
     canvas.create_rectangle(x1 + r, y1, x2 - r, y2, fill=bg, outline=bg)
     canvas.create_text(cx, cy, text=text, fill=fg, font=font_spec)
+
+
+def draw_fraction(canvas, cx, cy, num_text, den_text,
+                  num_color=INK, den_color=INK, size=30):
+    """Draw a stacked fraction centred on (cx, cy). Returns (num_y, den_y).
+
+    Canonical helper for tutorial modules. The existing per-tutorial
+    `_draw_fraction` copies (in tutorial_frac_basic / tutorial_frac_intermediate
+    / tutorial_conv_basic / tutorial_conv_intermediate) are exact duplicates of
+    this and may migrate to import from here over time. New tutorial packs
+    should import this instead of copying the helper.
+    """
+    font_spec = ("Helvetica", size, "bold")
+    num_y = cy - size * 0.65
+    den_y = cy + size * 0.65
+    canvas.create_text(cx, num_y, text=str(num_text),
+                       fill=num_color, font=font_spec)
+    canvas.create_text(cx, den_y, text=str(den_text),
+                       fill=den_color, font=font_spec)
+    half = size * 0.65
+    canvas.create_line(cx - half, cy, cx + half, cy,
+                       fill=INK, width=2)
+    return num_y, den_y
+
+
+def build_slides(slide_fns, titles, captions=None):
+    """Assemble a SLIDES list from parallel (draw_fn, title[, caption]) arrays.
+
+    Reduces the ~15-line repetitive `SLIDES = [dict(title=..., draw=_slide_N), ...]`
+    block in every tutorial module to a single call:
+
+        SLIDES = build_slides(
+            [_slide_1, _slide_2, ..., _slide_N],
+            ["Read the question", "Same piece size", ..., "Pitfall"],
+            captions=[...]   # optional; defaults to empty strings
+        )
+
+    All three arrays must be the same length. `captions` is optional.
+    """
+    if len(slide_fns) != len(titles):
+        raise ValueError(
+            f"build_slides: slide_fns ({len(slide_fns)}) and titles "
+            f"({len(titles)}) length mismatch"
+        )
+    if captions is None:
+        captions = [""] * len(slide_fns)
+    elif len(captions) != len(slide_fns):
+        raise ValueError(
+            f"build_slides: captions ({len(captions)}) does not match "
+            f"slide_fns length ({len(slide_fns)})"
+        )
+    return [
+        {"title": t, "caption": c, "draw": fn}
+        for fn, t, c in zip(slide_fns, titles, captions)
+    ]

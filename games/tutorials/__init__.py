@@ -26,9 +26,12 @@ Notes
 # Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
 from . import tutorial_conv_basic
+from . import tutorial_conv_intermediate
 from . import tutorial_div_basic
+from . import tutorial_div_intermediate
 from . import tutorial_frac_basic
 from . import tutorial_frac_intermediate
+from . import tutorial_mult_intermediate
 
 
 # ── Registry ─────────────────────────────────────────────────────────────────
@@ -38,16 +41,16 @@ from . import tutorial_frac_intermediate
 
 TUTORIAL_REGISTRY: dict[str, object] = {
     # "mult_basic":        None,   # intentionally no tutorial — see INTENTIONAL_NO_GUIDE
-    # "mult_intermediate": tutorial_mult_intermediate,   # to come
+    "mult_intermediate": tutorial_mult_intermediate,
     # "mult_advanced":     tutorial_mult_advanced,       # to come
     "div_basic":         tutorial_div_basic,
-    # "div_intermediate":  tutorial_div_intermediate,    # to come
+    "div_intermediate":  tutorial_div_intermediate,
     # "div_advanced":      tutorial_div_advanced,        # to come
     "frac_basic":        tutorial_frac_basic,
     "frac_intermediate": tutorial_frac_intermediate,
     # "frac_advanced":     tutorial_frac_advanced,       # to come
     "conv_basic":        tutorial_conv_basic,
-    # "conv_intermediate": tutorial_conv_intermediate,   # to come
+    "conv_intermediate": tutorial_conv_intermediate,
     # "conv_advanced":     tutorial_conv_advanced,       # to come
 }
 
