@@ -84,15 +84,19 @@ Rules that, if violated, break the product or break pupil trust. Do not re-deriv
 
 ## Current state
 
-Last shipped: **v0.7.7.2** (2026-04-25) — pedagogy + layout overhaul of tutorial_mult_intermediate after live review with Aleks:
-1. **Inline-expression layout.** Replaced the stacked Norwegian form (top number, × bot row, bar) with a single inline `TOP × BOT` row at the top, partials right-aligned beneath the TOP factor only (the bot factor lives only in the inline expression). Matches Aleks's handwritten reference picture exactly. `_draw_layout` rewrite anchors columns to `col_anchor_x` (TOP's ones-digit x); `bot_lsb_x` is its inline-positioned counterpart for arc-arrow sourcing. New `_inline_anchors(cx, ex)` helper, new `skeleton=True` mode used by slide 1, new `show_inline=False` for slide 2's second-pass arc overlay.
-2. **Slide count 7 → 6.** Slide 6 "Verify by estimation" dropped at Aleks's request. Slide 7 (Pitfalls) renumbered to 6. `draw_arrow` import removed (no longer used).
-3. **Slide 1 pill shortened** to "one partial row per right-number digit, right-aligned beneath the LEFT factor" so it fits the canvas width.
-4. **Slide 2 arc arrows** anchored closer to the digit baselines (src/dst y = oy − 4 instead of oy − 12) so the tails read as lifting off the bot-digit and landing on the top-digit, not floating in space.
+Last shipped: **v0.7.8** (2026-04-25) — eighth tutorial pack: `tutorial_div_advanced`. Norwegian trappa long division extended into terminating decimals. 6 slides × 5 examples (3 exact integer cases matching the game's 75% branch + 2 terminating-decimal cases matching the 25% branch).
 
-py_compile clean. Harnesses verify_div_intermediate.py + verify_mult_intermediate.py remain pending execution before the next exe build. Scope-shift unchanged: mult_intermediate covers 2-dig × 2-dig prominently + a 3-dig × 2-dig stress test (234 × 21), so mult_advanced widens to 3-dig × 2-dig / 3-dig × 3-dig (see ROADMAP).
+Key design decisions Aleks confirmed before writing:
+- **Method:** Norwegian trappa / staircase (not English bring-down).
+- **Decimal handling:** Append a comma to the quotient and "bring down" an imaginary 0 from the dividend's right edge; new partial = leftover × 10. Repeat until remainder = 0.
 
-Next up (see ROADMAP.md for detail): tutorial packs for mult_advanced, div_advanced, frac_advanced, conv_advanced — then v0.7.x follow-up features (in-game `(i)` button hook), then v0.8.0 main-menu redesign (topic tiles + difficulty picker with bronze/blue/purple/fire item-frame tiers) + shop/cosmetics (dark mode + avatar system).
+Layout reuse: imports `COL_W`, `LINE_H`, `LAYOUT_FONT`, `BAR_COLOR`, `_short_div_steps`, AND `_draw_layout` from `tutorial_div_intermediate`. The new `_long_div(dividend, divisor)` delegates the integer phase to `_short_div_steps`, only adds the decimal-phase loop. Slide 2's refresher renders 36 ÷ 3 = 12 via Intermediate's own `_draw_layout` so the pupil sees the exact same picture from the previous tutorial. Tutorial count now 8.
+
+Slide structure: (1) read the question, (2) refresher with mini Intermediate render, (3) decimal extension on fixed reference 13 ÷ 2 = 6,5, (4) walk the full chain on the cycled example, (5) verify by multiplying back, (6) pitfalls (fixed ref 17 ÷ 4 = 4,25; wrong answers "425" and "4,2").
+
+py_compile clean. Tk-dependent harness deferred (sandbox lacks tkinter; py_compile is the most we can verify here).
+
+Next up (see ROADMAP.md): tutorial packs for mult_advanced, frac_advanced, conv_advanced — then v0.7.x follow-up features (in-game `(i)` button hook), then v0.8.0 main-menu redesign (topic tiles + difficulty picker with bronze/blue/purple/fire item-frame tiers) + shop/cosmetics (dark mode + avatar system).
 
 ## When to read what
 

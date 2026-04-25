@@ -1,4 +1,4 @@
-"""
+r"""
 profile_manager.py
 ------------------
 Profile CRUD and directory logic.

@@ -27,6 +27,7 @@ Notes
 
 from . import tutorial_conv_basic
 from . import tutorial_conv_intermediate
+from . import tutorial_div_advanced
 from . import tutorial_div_basic
 from . import tutorial_div_intermediate
 from . import tutorial_frac_basic
@@ -45,7 +46,7 @@ TUTORIAL_REGISTRY: dict[str, object] = {
     # "mult_advanced":     tutorial_mult_advanced,       # to come
     "div_basic":         tutorial_div_basic,
     "div_intermediate":  tutorial_div_intermediate,
-    # "div_advanced":      tutorial_div_advanced,        # to come
+    "div_advanced":      tutorial_div_advanced,
     "frac_basic":        tutorial_frac_basic,
     "frac_intermediate": tutorial_frac_intermediate,
     # "frac_advanced":     tutorial_frac_advanced,       # to come

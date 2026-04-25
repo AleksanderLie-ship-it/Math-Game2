@@ -1,4 +1,4 @@
-"""
+r"""
 settings_manager.py
 -------------------
 Global app settings (not per-profile).

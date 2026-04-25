@@ -16,9 +16,10 @@ Target: word-of-mouth sellable at 199 NOK to Norwegian parents / homeschool netw
 - **v0.7.0** Tutorial slideshow framework + div_basic pack ✅
 - **v0.7.1–0.7.5** Five tutorial packs shipped: div_basic, frac_basic, frac_intermediate, conv_basic, conv_intermediate ✅
 - **v0.7.6** Sixth tutorial pack shipped: div_intermediate (short division, Norwegian vertical layout, 7 slides × 5 examples) ✅
-- **v0.7.7** Seventh tutorial pack shipped: mult_intermediate (partial products with the Norwegian X-shift placeholder, 7 slides × 5 examples) ✅
+- **v0.7.7** Seventh tutorial pack shipped: mult_intermediate (partial products with the X-shift placeholder, originally 7 slides × 5 examples) ✅
 - **v0.7.7.1** Patch: render fixes in tutorial_mult_intermediate (slide 2/4 arc-arrow stub bug, slide 3 pill overlap, slide 4 premature sum row). `_draw_layout` gained an explicit `show_sum` parameter. ✅
-- **v0.7.7.2** Layout overhaul of tutorial_mult_intermediate: inline `TOP × BOT` row replaces the stacked top/× bot/bar form (matches Aleks's handwritten reference). Slide 6 "Verify by estimation" dropped (7 → 6 slides). Slide 1 pill shortened, slide 2 arc tails anchored closer to digit baselines. ✅
+- **v0.7.7.2** Layout overhaul of tutorial_mult_intermediate: inline `TOP × BOT` row replaces the stacked top/× bot/bar form. Slide 6 "Verify by estimation" dropped (7 → 6 slides). ✅
+- **v0.7.8** Eighth tutorial pack shipped: div_advanced (Norwegian trappa long division extended into terminating decimals via comma + zero bring-down, 6 slides × 5 examples). Reuses Intermediate's `_short_div_steps` and `_draw_layout` directly. ✅
 
 See `CHANGELOG.md` for per-version detail.
 
@@ -33,10 +34,10 @@ Ordering priority: fractions and division packs first (stronger LK20 5. trinn di
 | game_id             | status  | tentative slide plan                                                                                       |
 |---------------------|---------|-------------------------------------------------------------------------------------------------------------|
 | `mult_basic`        | SKIP    | Pure memorisation; panel renders "No guide needed" placeholder. Intentional.                                |
-| `mult_intermediate` | ✅ done (v0.7.7) | Shipped: 7 slides × 5 examples, Norwegian vertical partial products with the X-shift placeholder marking the tens-column zero. 4 × 2-dig × 2-dig + 1 × 3-dig × 2-dig stress test (234 × 21 = 4914, matches handwritten reference). Arc arrows from each bottom-digit to the whole top. Slide 6 verify = estimation by rounding to the nearest 10. |
-| `div_intermediate`  | ✅ done (v0.7.6) | Shipped: 7 slides × 5 exact examples, Norwegian vertical layout, Courier monospace digit columns, dotted "trekker ned" arrow, fixed 252 ÷ 9 pitfall reference. All examples exact to match `div_intermediate.py`'s generator; remainder-as-decimal deferred to `div_advanced`. |
-| `mult_advanced`     | TODO    | Scope widened in v0.7.7: mult_intermediate already covers 2-dig × 2-dig prominently + a 3-dig × 2-dig stress test (234 × 21). Advanced should open with a single refresher slide reusing `_mult_steps` + `_draw_layout`, then extend into 3-dig × 2-dig / 3-dig × 3-dig territory where the second placeholder (XX for the hundreds digit) becomes the novel move. May want more than 7 slides given the extra partial row. |
-| `div_advanced`      | TODO    | Long division. Decide method with Aleks: Norwegian "trappa"/staircase vs. English bring-down. May want more than 8 slides. |
+| `mult_intermediate` | ✅ done (v0.7.7.2) | Inline `TOP × BOT` row + partial products with the X-shift placeholder. 6 slides × 5 examples. 4 × 2-dig × 2-dig + 1 × 3-dig × 2-dig stress test (234 × 21 = 4914). |
+| `div_intermediate`  | ✅ done (v0.7.6) | 7 slides × 5 exact examples, Norwegian vertical short division, Courier monospace digit columns, dotted "trekker ned" arrow. |
+| `mult_advanced`     | TODO    | Build on mult_intermediate. 3-dig × 2-dig and 3-dig × 3-dig with the XX double-placeholder for the hundreds digit. Open with one refresher slide reusing `_mult_steps` + `_draw_layout`. May want more than 7 slides. |
+| `div_advanced`      | ✅ done (v0.7.8) | 6 slides × 5 examples, Norwegian trappa method extended into terminating decimals via comma + zero bring-down. Reuses Intermediate's `_short_div_steps` and `_draw_layout` directly. |
 | `frac_advanced`     | TODO    | Mixed numbers + improper fractions. Convert to improper → add → convert back. Two-lane layout (original form vs. improper form) throughout. |
 | `conv_advanced`     | TODO    | All three directions consolidated. Build on conv_basic + conv_intermediate. Slide 1 = "the three forms are the same number". May want a structurally different shape (two parallel lanes, not linear carousel). |
 
@@ -49,52 +50,14 @@ Ordering priority: fractions and division packs first (stronger LK20 5. trinn di
 
 ---
 
-## v0.8.0 — Main-menu redesign + Shop & Cosmetics (incl. Avatar System)
+## v0.8.0 — Shop & Cosmetics (including Avatar System)
 
-**Why here:** gives achievement points actual spending weight. Retroactively makes every achievement feel more meaningful. Bundled with the main-menu redesign because both need the same asset-loading pipeline.
-
-### Main-menu redesign — topic tiles + difficulty picker
-
-**Motivation:** the current flat 12-tile grid (4 topics × 3 tiers) does not scale. Post-1.0 game families (addition, subtraction, probability, equations, time) would push it to 27 tiles. Collapse early.
-
-**Design:**
-- Main menu shows one tile per **topic** (Multiplication, Division, Fractions, Conversions, …) instead of per-tier. Review row (Tutorials, Practice Missed, Progress & Stats) stays flat.
-- Click a topic tile → new **DifficultyPicker** frame → three fat tiles (Beginner / Intermediate / Advanced) → game. Back / Escape returns one level.
-- Each tile inside the picker uses a themed frame from `assets/item_frames/`:
-  - **Beginner:** bronze/copper frame
-  - **Intermediate:** blue/silver frame
-  - **Advanced:** purple/epic frame
-  - **Mastered (any tier):** fire frame overlay replaces the default frame
-- Picker default-selects the tier the pupil most recently played (Enter launches it — one-keypress entry, preserves the per-session click count).
-
-**Tier-progress indicator on the topic tile (so unlock reveal stays on main menu):**
-- Three mini-indicators on the face of each topic tile showing tier state: locked / unlocked / mastered.
-- Colour vocabulary matches the frame palette (bronze / blue / purple, fire for mastered) so the main menu and picker read as the same visual system.
-- Unlock animation: 300 ms fade + one-frame scale pop when a tier state changes, non-blocking (`canvas.after`). Fires on the main menu before the pupil ever opens the picker — preserves the current "I see the unlock from the menu" dopamine surface.
-
-**Implementation order to avoid blocking on the asset pipeline:**
-1. Ship Canvas-drawn mini-indicators first (deterministic, no asset dependency, ~60 lines of Canvas code, visual style matches `stats_screen.py`).
-2. Land the asset-loading + 512→target resize pipeline (same pipeline the avatar system needs).
-3. Swap Canvas indicators for scaled-down `item_frames` PNGs once the pipeline is live. Build the indicator as a function taking a state enum so the swap is a one-file change, not a refactor.
-
-**Mastery threshold (new state, needs to be defined):**
-- Default: "mastered = best streak in that tier ≥ 10". Reuses existing `sessions_store.per_game_summary` data, fires during normal play, tunable.
-- Alternative if 10 feels wrong: accuracy ≥ 90% over the last 3 sessions in that tier. Data is already there too.
-- Decide with Aleks before building. Whichever wins, expose it as one constant so retuning is cheap.
-
-**Fire semantic is RESERVED for tier mastery — do not also use it for active streaks.** Streak is session momentum (fragile, resets); mastery is permanent (earned, keeps). Mixing the two collapses the distinction. If a streak indicator on the menu is wanted later, pick a different glyph (lightning ⚡, chain ⛓, or a coloured bar).
-
-**Selecting the exact 4 frames from `assets/item_frames/`:** Aleks to eyeball the 16 PNGs and pick the four that form the cleanest bronze → blue → purple → fire progression. Bundle only those four (not the atlas or the unused 12) to keep exe size down.
-
-**Mult_basic "SKIP" handling in the picker:** the Multiplication topic tile still opens the picker, but the Beginner tile is labelled identically to today ("Times tables 1-10"). No tutorial button inside it (`tutorials_panel.py` already handles the "No guide needed" case — consistent behaviour).
-
-### Shop & Cosmetics (achievement-point sink)
+**Why here:** gives achievement points actual spending weight. Retroactively makes every achievement feel more meaningful.
 
 - Spend points on:
   - Color themes (Dark mode, Warm/amber, Classic light)
   - Avatar/icon shown in profile header and beside game question
   - Avatar border frame (unlockable overlay on the portrait)
-  - Bonus XP multiplier (2× points for one session)
 - Theme applied globally, persisted per profile in settings.json.
 - Dark mode is the priority unlock — highest perceived value.
 
