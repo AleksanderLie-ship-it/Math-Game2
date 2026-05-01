@@ -11,6 +11,13 @@ import os
 import pathlib
 
 _DEFAULT_STATS = {
+    # Lifetime point ledger (added v0.7.13.1). `points` (top-level field
+    # in the stored dict, not in stats) is the *spendable* balance and
+    # decreases on Shop purchases. `total_spent` tracks cumulative spend
+    # so the UI can surface a lifetime-earned figure as
+    # `points + total_spent`. Older profiles default to 0 — they simply
+    # show lifetime == balance until they spend something.
+    "total_spent":             0,
     "total_correct":           0,
     "best_streak_ever":        0,
     "days_played":             [],
@@ -83,6 +90,34 @@ class AchievementsStore:
         self._data["points"] += points
         self._save()
         return True
+
+    def spend(self, points: int) -> bool:
+        """Deduct `points` from the running total. Returns False if the
+        profile cannot afford the cost — the caller should refuse the
+        purchase in that case. Lifetime achievements (the source of
+        these points) are *not* refunded; this is a one-way deduction.
+        Added v0.7.13 for shop purchases.
+
+        v0.7.13.1: also bumps `stats.total_spent` so the UI can surface
+        a lifetime-earned figure as `points + total_spent`.
+        """
+        if points <= 0:
+            return True
+        if self._data.get("points", 0) < points:
+            return False
+        self._data["points"] -= points
+        s = self._data.setdefault("stats", {})
+        s["total_spent"] = int(s.get("total_spent", 0)) + int(points)
+        self._save()
+        return True
+
+    def get_total_spent(self) -> int:
+        return int(self._data.get("stats", {}).get("total_spent", 0))
+
+    def get_lifetime_earned(self) -> int:
+        """Lifetime achievement points. Sum of current spendable balance
+        plus everything ever spent. Per the design note in `spend()`."""
+        return self.get_points() + self.get_total_spent()
 
     # ------------------------------------------------------------------ stats
 

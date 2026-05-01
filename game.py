@@ -37,7 +37,7 @@ Foundation hooks landed in v0.7.12 (ready, not yet active):
 """
 # Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
-__version__ = "0.7.12"
+__version__ = "0.8.0.1"
 
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -215,15 +215,80 @@ _DIFFICULTY_TIERS = [
 ]
 
 
+# ── Shop catalogue ─────────────────────────────────────────────────────────────
+#
+# Items the pupil can buy with achievement points. v0.7.13 ships a single
+# item — Dark Mode. Future avatar packs / border frames append entries
+# here; the shop modal renders one card per item and gates each behind
+# `purchases_store.has(id)`.
+#
+# Each entry:
+#   id        — stable string key, persisted in purchases.json
+#   name      — display name in the shop card
+#   category  — group label (Theme / Avatar / Frame …)
+#   icon      — single emoji for the card hero glyph
+#   desc      — 1–2 sentence pitch
+#   price     — cost in achievement points
+#   on_buy    — optional callable(app) invoked AFTER `purchase()` succeeds.
+#               Use this for side effects (e.g. Dark Mode flips the
+#               settings 'theme' default to "dark" so the toggle starts
+#               on, but the user is free to flip it off in Settings).
+
+SHOP_ITEMS = [
+    {
+        "id":       "dark_mode",
+        "name":     "Dark Mode",
+        "category": "Theme",
+        "icon":     "🌙",
+        "desc":     ("A clean dark colour theme. Activate from "
+                     "Settings → Appearance once purchased."),
+        "price":    500,
+        "on_buy":   None,
+    },
+    {
+        "id":       "matrix_mode",
+        "name":     "Matrix Mode",
+        "category": "Theme",
+        "icon":     "🟢",
+        "desc":     ("Green-on-black phosphor like the Matrix movie. "
+                     "Digits glow. Activate from Settings → Appearance."),
+        "price":    1000,
+        # v0.7.13.2: Matrix has a *prerequisite achievement* on top of
+        # the price. Hides the item behind real progress so it feels
+        # earned, not just bought. The achievement chosen — Sharp on
+        # Multiplication: Intermediate — is the same one that unlocks
+        # Multiplication: Advanced, so "Matrix unlocks once Mult
+        # Advanced is open" lines up with curriculum progression.
+        "unlock_req": "sharp_mult_intermediate",
+        "on_buy":     None,
+    },
+]
+
+
 # ── App controller ─────────────────────────────────────────────────────────────
 
 class App:
     def __init__(self, root):
+        T = theme()
         self.root = root
         self.root.title(f"Math Practice  v{__version__}")
-        self.root.geometry("1080x720")
-        self.root.minsize(920, 560)
-        self.root.configure(bg="#f8fafc")
+        # 1120x800 fits the v0.7.12 compressed menu (4 family tiles + 4-tile
+        # tools row + header + footer) without requiring a scrollbar at
+        # the default size. The auto-hide scrollbar in show_menu kicks in
+        # only when the user shrinks the window below the content height.
+        #
+        # Minimum width is 1080 — below that the 4 equal-width family
+        # tiles squish past their labels ("Fractions: Conversions" wraps
+        # awkwardly and the rightmost tile starts clipping). Computed
+        # floor: 4 tiles × ~235 px + 3 × 14 px gap + 2 × 48 px section
+        # padding ≈ 1078, rounded up.
+        # v0.8.0.1: 1120x800 → 1180x920. The 800-tall window still
+        # triggered the auto-hide scrollbar at default size (header +
+        # games row + tools row + footer + page padding ≈ 850 px).
+        # Bumped past that threshold so a fresh launch is scroll-free.
+        self.root.geometry("1180x920")
+        self.root.minsize(1080, 700)
+        self.root.configure(bg=T["bg"])
         self._apply_styles()
 
         self._current       = None
@@ -248,6 +313,7 @@ class App:
         self._missed_store    = None
         self._scores_store    = None
         self._sessions_store  = None
+        self._purchases_store = None   # v0.7.13: cosmetic ledger
 
         # Persistent root-level mousewheel. Installed now and re-installed
         # every time show_menu() runs — subscreens (Stats, Practice Missed,
@@ -285,29 +351,31 @@ class App:
 
     def show_profiles(self):
         """Landing screen — choose or create a profile."""
+        T = theme()
         self._clear()
         self._profile_name = None
         self._ach_store = self._missed_store = self._scores_store = None
         self._sessions_store = None
+        self._purchases_store = None
 
-        outer = tk.Frame(self.root, bg="#f8fafc")
+        outer = tk.Frame(self.root, bg=T["bg"])
         outer.pack(fill=tk.BOTH, expand=True)
         self._current = outer
 
         # ── Centred card ──────────────────────────────────────────────────────
-        wrapper = tk.Frame(outer, bg="#f8fafc")
+        wrapper = tk.Frame(outer, bg=T["bg"])
         wrapper.place(relx=0.5, rely=0.5, anchor="center")
 
         tk.Label(wrapper, text="Math Practice",
                  font=("Helvetica", 30, "bold"),
-                 bg="#f8fafc", fg="#0f172a").pack(pady=(0, 4))
+                 bg=T["bg"], fg=T["ink"]).pack(pady=(0, 4))
         tk.Label(wrapper, text="Who is playing?",
-                 font=("Helvetica", 13), bg="#f8fafc", fg="#475569").pack(pady=(0, 28))
+                 font=("Helvetica", 13), bg=T["bg"], fg=T["muted"]).pack(pady=(0, 28))
 
         profiles = list_profiles()
 
         if profiles:
-            profiles_frame = tk.Frame(wrapper, bg="#f8fafc")
+            profiles_frame = tk.Frame(wrapper, bg=T["bg"])
             profiles_frame.pack(pady=(0, 20))
 
             for name in profiles:
@@ -315,30 +383,30 @@ class App:
 
         # ── Divider ───────────────────────────────────────────────────────────
         if profiles:
-            div_row = tk.Frame(wrapper, bg="#f8fafc")
+            div_row = tk.Frame(wrapper, bg=T["bg"])
             div_row.pack(fill=tk.X, pady=(4, 16))
-            tk.Frame(div_row, bg="#e2e8f0", height=1).pack(
+            tk.Frame(div_row, bg=T["card_border"], height=1).pack(
                 side=tk.LEFT, fill=tk.X, expand=True, pady=8)
             tk.Label(div_row, text="  or  ", font=("Helvetica", 9),
-                     bg="#f8fafc", fg="#94a3b8").pack(side=tk.LEFT)
-            tk.Frame(div_row, bg="#e2e8f0", height=1).pack(
+                     bg=T["bg"], fg=T["dim"]).pack(side=tk.LEFT)
+            tk.Frame(div_row, bg=T["card_border"], height=1).pack(
                 side=tk.LEFT, fill=tk.X, expand=True, pady=8)
 
         # ── New profile entry ─────────────────────────────────────────────────
-        new_frame = tk.Frame(wrapper, bg="#f8fafc")
+        new_frame = tk.Frame(wrapper, bg=T["bg"])
         new_frame.pack()
 
         tk.Label(new_frame,
                  text="Create new profile" if profiles else "Enter your name to start:",
-                 font=("Helvetica", 10, "bold"), bg="#f8fafc", fg="#0f172a").pack(anchor="w")
+                 font=("Helvetica", 10, "bold"), bg=T["bg"], fg=T["ink"]).pack(anchor="w")
 
-        entry_row = tk.Frame(new_frame, bg="#f8fafc")
+        entry_row = tk.Frame(new_frame, bg=T["bg"])
         entry_row.pack(fill=tk.X, pady=(6, 0))
 
         name_var = tk.StringVar()
         name_entry = tk.Entry(entry_row, textvariable=name_var,
                               font=("Helvetica", 13), relief="solid", bd=1,
-                              fg="#0f172a", width=20)
+                              fg=T["ink"], width=20)
         name_entry.pack(side=tk.LEFT, ipady=6, padx=(0, 8))
         name_entry.focus_set()
 
@@ -357,37 +425,38 @@ class App:
         name_entry.bind("<Return>", _create)
         tk.Button(entry_row, text="Start  →",
                   font=("Helvetica", 11, "bold"),
-                  bg="#0f172a", fg="white", relief="flat", bd=0,
+                  bg=T["btn_primary_bg"], fg=T["btn_primary_fg"], relief="flat", bd=0,
                   padx=14, pady=6, cursor="hand2",
                   activebackground="#1e293b", activeforeground="white",
                   command=_create).pack(side=tk.LEFT)
 
         # ── Footer ────────────────────────────────────────────────────────────
-        footer = tk.Frame(outer, bg="#f8fafc")
+        footer = tk.Frame(outer, bg=T["bg"])
         footer.pack(side=tk.BOTTOM, fill=tk.X, pady=8)
         tk.Label(footer,
                  text=f"Math Practice  v{__version__}  ·  © 2026 Aleksander Lie",
-                 font=("Helvetica", 8), bg="#f8fafc", fg="#cbd5e1").pack(side=tk.LEFT, padx=16)
+                 font=("Helvetica", 8), bg=T["bg"], fg=T["faint"]).pack(side=tk.LEFT, padx=16)
         tk.Button(footer, text="⚙  Settings",
-                  font=("Helvetica", 9), bg="#f8fafc", fg="#94a3b8",
+                  font=("Helvetica", 9), bg=T["bg"], fg=T["dim"],
                   relief="flat", bd=0, padx=8, cursor="hand2",
                   activebackground="#f8fafc", activeforeground="#475569",
                   command=self._show_settings).pack(side=tk.RIGHT, padx=16)
 
     def _profile_card(self, parent, name):
         """A clickable card for an existing profile with a delete button."""
-        card = tk.Frame(parent, bg="white",
-                        highlightbackground="#e2e8f0", highlightthickness=1,
+        T = theme()
+        card = tk.Frame(parent, bg=T["card_bg"],
+                        highlightbackground=T["card_border"], highlightthickness=1,
                         cursor="hand2")
         card.pack(fill=tk.X, pady=4)
 
-        inner = tk.Frame(card, bg="white", padx=18, pady=12)
+        inner = tk.Frame(card, bg=T["card_bg"], padx=18, pady=12)
         inner.pack(fill=tk.X)
 
         # Name label
         name_lbl = tk.Label(inner, text=f"👤  {name}",
                             font=("Helvetica", 13, "bold"),
-                            bg="white", fg="#0f172a", cursor="hand2")
+                            bg=T["card_bg"], fg=T["ink"], cursor="hand2")
         name_lbl.pack(side=tk.LEFT)
 
         # Delete button
@@ -401,7 +470,7 @@ class App:
                 self.show_profiles()   # refresh
 
         tk.Button(inner, text="✕",
-                  font=("Helvetica", 10), bg="white", fg="#94a3b8",
+                  font=("Helvetica", 10), bg=T["card_bg"], fg=T["dim"],
                   relief="flat", bd=0, padx=6, cursor="hand2",
                   activebackground="white", activeforeground="#b91c1c",
                   command=_confirm_delete).pack(side=tk.RIGHT)
@@ -414,13 +483,15 @@ class App:
         """Load stores for the chosen profile and go to game menu."""
         self._profile_name = name
         (self._ach_store, self._missed_store,
-         self._scores_store, self._sessions_store) = load_stores(name)
+         self._scores_store, self._sessions_store,
+         self._purchases_store) = load_stores(name)
         self.show_menu()
 
     # ---------------------------------------------------------------- settings
 
     def _show_settings(self):
         """Settings popup — global options, not per-profile."""
+        T = theme()
         root = self.root
         root.update_idletasks()
         cx = root.winfo_x() + root.winfo_width()  // 2
@@ -428,58 +499,69 @@ class App:
 
         win = tk.Toplevel(root)
         win.title("Settings")
-        win.configure(bg="#f8fafc")
-        win.geometry(f"460x400+{cx - 230}+{cy - 200}")
-        win.resizable(False, False)
+        win.configure(bg=T["bg"])
+        # Geometry bumped to 560×600 (v0.7.13.3) so all 3 themes fit
+        # without clipping the Matrix row. Made resizable too — if a
+        # future settings section pushes content past 600px, the user
+        # can drag.
+        win.geometry(f"560x600+{cx - 280}+{cy - 300}")
+        win.resizable(False, True)
         win.grab_set()
 
         # Header
-        hdr = tk.Frame(win, bg="#0f172a", padx=24, pady=16)
+        hdr = tk.Frame(win, bg=T["btn_primary_bg"], padx=24, pady=16)
         hdr.pack(fill=tk.X)
         tk.Label(hdr, text="⚙  Settings",
                  font=("Helvetica", 15, "bold"),
-                 bg="#0f172a", fg="white").pack(side=tk.LEFT)
+                 bg=T["btn_primary_bg"], fg=T["btn_primary_fg"]).pack(side=tk.LEFT)
 
-        body = tk.Frame(win, bg="#f8fafc", padx=28, pady=20)
+        body = tk.Frame(win, bg=T["bg"], padx=28, pady=20)
         body.pack(fill=tk.BOTH, expand=True)
 
         def _section(text):
             tk.Label(body, text=text.upper(),
                      font=("Helvetica", 9, "bold"),
-                     bg="#f8fafc", fg="#94a3b8").pack(anchor="w", pady=(14, 4))
-            tk.Frame(body, bg="#e2e8f0", height=1).pack(fill=tk.X, pady=(0, 10))
+                     bg=T["bg"], fg=T["dim"]).pack(anchor="w", pady=(14, 4))
+            tk.Frame(body, bg=T["card_border"], height=1).pack(fill=tk.X, pady=(0, 10))
 
         def _toggle_row(label, desc, key, enabled=True):
-            """A row with a label and a live-updating On/Off toggle."""
-            row = tk.Frame(body, bg="#f8fafc")
+            """A row with a label and a live-updating On/Off toggle.
+
+            v0.7.13.3: theme-aware. Previously used hardcoded #0f172a
+            label fg + #e2e8f0 OFF-button bg which made the row almost
+            invisible in dark/matrix mode (label disappeared, OFF button
+            was bright on dark).
+            """
+            row = tk.Frame(body, bg=T["bg"])
             row.pack(fill=tk.X, pady=5)
 
-            text_col = tk.Frame(row, bg="#f8fafc")
+            text_col = tk.Frame(row, bg=T["bg"])
             text_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-            fg = "#0f172a" if enabled else "#cbd5e1"
+            label_fg = T["ink"]   if enabled else T["faint"]
+            desc_fg  = T["dim"]   if enabled else T["faint"]
             tk.Label(text_col, text=label,
                      font=("Helvetica", 11, "bold"),
-                     bg="#f8fafc", fg=fg).pack(anchor="w")
+                     bg=T["bg"], fg=label_fg).pack(anchor="w")
             tk.Label(text_col, text=desc,
                      font=("Helvetica", 9),
-                     bg="#f8fafc", fg="#94a3b8" if enabled else "#e2e8f0").pack(anchor="w")
+                     bg=T["bg"], fg=desc_fg).pack(anchor="w")
 
             if not enabled:
                 tk.Label(row, text="Coming soon",
-                         font=("Helvetica", 8), bg="#f8fafc",
-                         fg="#cbd5e1").pack(side=tk.RIGHT, padx=4)
+                         font=("Helvetica", 8), bg=T["bg"],
+                         fg=T["faint"]).pack(side=tk.RIGHT, padx=4)
                 return
 
             val = tk.BooleanVar(value=settings.get(key))
-            btn_frame = tk.Frame(row, bg="#f8fafc")
+            btn_frame = tk.Frame(row, bg=T["bg"])
             btn_frame.pack(side=tk.RIGHT)
 
             def _refresh_btn():
                 on = val.get()
                 btn.configure(
                     text="ON " if on else "OFF",
-                    bg="#0f172a" if on else "#e2e8f0",
-                    fg="white"  if on else "#94a3b8",
+                    bg=T["btn_primary_bg"] if on else T["soft"],
+                    fg=T["btn_primary_fg"] if on else T["dim"],
                 )
 
             def _toggle():
@@ -507,10 +589,87 @@ class App:
             "start_maximized",
         )
 
-        # ── Coming soon ───────────────────────────────────────────────────────
-        _section("Appearance  (coming soon)")
-        _toggle_row("Dark mode",    "Switch to a dark colour theme.",        "theme",  enabled=False)
-        _toggle_row("Sound effects","Play sounds on correct/wrong answers.", "sound",  enabled=False)
+        # ── Appearance ────────────────────────────────────────────────────────
+        # Dark mode is gated behind the Shop purchase. Once owned, the
+        # toggle is enabled and writes settings('theme') as "dark"/"light".
+        # Toggling rebuilds the menu under the modal so the change is
+        # visible the moment the user closes settings.
+        # ── Appearance ────────────────────────────────────────────────────────
+        # Theme picker (v0.7.13.1). Light is free; Dark / Matrix unlock
+        # via Shop purchases. Each row is one theme — selecting an owned
+        # one writes settings('theme') and rebuilds the menu under the
+        # modal. Locked rows offer a "Buy in Shop" shortcut instead.
+        _section("Appearance")
+
+        from games.theme import available_themes, theme_name as _theme_name
+
+        _THEME_META = {
+            "light":  {"name": "Light",     "desc": "Default light theme.",                "icon": "☀",  "shop_id": None},
+            "dark":   {"name": "Dark",      "desc": "Clean dark theme.",                   "icon": "🌙", "shop_id": "dark_mode"},
+            "matrix": {"name": "Matrix",    "desc": "Green-on-black phosphor. Digits glow.","icon": "🟢", "shop_id": "matrix_mode"},
+        }
+
+        def _select_theme(name):
+            settings.set("theme", name)
+            try:
+                self.show_menu()
+            except Exception:
+                pass
+            # Rebuild the settings dialog so the radio state updates.
+            win.destroy()
+            self._show_settings()
+
+        for tk_name in available_themes():
+            meta = _THEME_META[tk_name]
+            owned = (meta["shop_id"] is None
+                     or (self._purchases_store and self._purchases_store.has(meta["shop_id"])))
+            active = (_theme_name() == tk_name)
+
+            row = tk.Frame(body, bg=T["bg"])
+            row.pack(fill=tk.X, pady=4)
+
+            text_col = tk.Frame(row, bg=T["bg"])
+            text_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+            label_fg = T["ink"] if owned else T["faint"]
+            tk.Label(text_col, text=f"{meta['icon']}  {meta['name']}",
+                     font=("Helvetica", 11, "bold"),
+                     bg=T["bg"], fg=label_fg).pack(anchor="w")
+            tk.Label(text_col, text=meta["desc"],
+                     font=("Helvetica", 9),
+                     bg=T["bg"], fg=(T["dim"] if owned else T["faint"])
+                     ).pack(anchor="w")
+
+            btn_col = tk.Frame(row, bg=T["bg"])
+            btn_col.pack(side=tk.RIGHT)
+
+            if owned:
+                if active:
+                    tk.Label(btn_col, text="✓ Active",
+                             font=("Helvetica", 9, "bold"),
+                             bg=T["good_bg"], fg=T["good"],
+                             padx=12, pady=6).pack()
+                else:
+                    tk.Button(btn_col, text="Use",
+                              font=("Helvetica", 9, "bold"),
+                              bg=T["btn_primary_bg"], fg=T["btn_primary_fg"],
+                              relief="flat", bd=0, padx=14, pady=4,
+                              cursor="hand2",
+                              activebackground=T["btn_primary_hover"],
+                              activeforeground=T["btn_primary_fg"],
+                              command=lambda n=tk_name: _select_theme(n)
+                              ).pack()
+            else:
+                tk.Button(btn_col, text="🔒 Buy in Shop",
+                          font=("Helvetica", 9, "bold"),
+                          bg="#faf5ff", fg="#9333ea",
+                          relief="flat", bd=0, padx=12, pady=4,
+                          cursor="hand2",
+                          activebackground="#f3e8ff", activeforeground="#7e22ce",
+                          command=lambda: (win.destroy(), self._show_shop())
+                          ).pack()
+
+        _toggle_row("Sound effects", "Play sounds on correct/wrong answers.",
+                    "sound", enabled=False)
 
         _section("Language  (coming soon)")
         _toggle_row("Norsk / English", "Switch the interface language.",     "lang",   enabled=False)
@@ -518,35 +677,73 @@ class App:
         # Close
         tk.Button(win, text="Done", command=win.destroy,
                   font=("Helvetica", 11, "bold"),
-                  bg="#0f172a", fg="white", relief="flat", bd=0,
+                  bg=T["btn_primary_bg"], fg=T["btn_primary_fg"], relief="flat", bd=0,
                   padx=24, pady=8, cursor="hand2",
                   activebackground="#1e293b", activeforeground="white").pack(pady=12)
 
     # ------------------------------------------------------------------- menu
 
     def show_menu(self):
+        T = theme()
         self._clear()
         self._current_family = None
 
-        outer = tk.Frame(self.root, bg="#f8fafc")
+        outer = tk.Frame(self.root, bg=T["bg"])
         outer.pack(fill=tk.BOTH, expand=True)
         self._current = outer
 
-        vsb = ttk.Scrollbar(outer, orient="vertical")
-        vsb.pack(side=tk.RIGHT, fill=tk.Y)
-
-        canvas = tk.Canvas(outer, bg="#f8fafc", highlightthickness=0,
-                           yscrollcommand=vsb.set)
+        # Auto-hide scrollbar pattern. The scrollbar is created but
+        # NOT packed up-front; it only appears when content overflows
+        # the canvas viewport. _sync_scrollbar runs on every <Configure>
+        # of either the inner content or the outer canvas and pack/
+        # pack_forgets the scrollbar accordingly. Wrapping
+        # `yscrollcommand` keeps Tk's normal scroll-position updates
+        # working while letting us steal the side effect for visibility.
+        canvas = tk.Canvas(outer, bg=T["bg"], highlightthickness=0)
         canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        vsb.config(command=canvas.yview)
 
-        inner = tk.Frame(canvas, bg="#f8fafc")
+        vsb = ttk.Scrollbar(outer, orient="vertical", command=canvas.yview)
+        # NOT packed initially — _sync_scrollbar will pack it the first
+        # time content overflows.
+        _vsb_visible = [False]
+
+        def _sync_scrollbar(*_):
+            try:
+                bbox = canvas.bbox("all")
+                if bbox is None:
+                    return
+                content_h = bbox[3] - bbox[1]
+                view_h    = canvas.winfo_height()
+                needed    = content_h > view_h + 1
+                if needed and not _vsb_visible[0]:
+                    vsb.pack(side=tk.RIGHT, fill=tk.Y)
+                    _vsb_visible[0] = True
+                elif not needed and _vsb_visible[0]:
+                    vsb.pack_forget()
+                    _vsb_visible[0] = False
+            except Exception:
+                pass
+
+        def _yscroll(first, last):
+            vsb.set(first, last)
+            _sync_scrollbar()
+
+        canvas.configure(yscrollcommand=_yscroll)
+
+        inner = tk.Frame(canvas, bg=T["bg"])
         win_id = canvas.create_window((0, 0), window=inner, anchor="nw")
 
-        inner.bind("<Configure>",
-                   lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-        canvas.bind("<Configure>",
-                    lambda e: canvas.itemconfig(win_id, width=e.width))
+        def _on_inner_configure(_e):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+            _sync_scrollbar()
+        inner.bind("<Configure>", _on_inner_configure)
+
+        def _on_canvas_configure(e):
+            canvas.itemconfig(win_id, width=e.width)
+            # Window resizes can change overflow status without the
+            # inner content changing; re-sync the scrollbar visibility.
+            _sync_scrollbar()
+        canvas.bind("<Configure>", _on_canvas_configure)
 
         self._scroll_target = canvas
         # Reclaim the root mousewheel binding from whichever subscreen we
@@ -555,39 +752,39 @@ class App:
         self._install_wheel_handler()
 
         # ── Header ────────────────────────────────────────────────────────────
-        hdr = tk.Frame(inner, bg="#f8fafc", padx=48, pady=32)
+        hdr = tk.Frame(inner, bg=T["bg"], padx=48, pady=32)
         hdr.pack(fill=tk.X)
 
         # Left: title + profile
-        title_col = tk.Frame(hdr, bg="#f8fafc")
+        title_col = tk.Frame(hdr, bg=T["bg"])
         title_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         tk.Label(title_col, text="Math Practice",
                  font=("Helvetica", 32, "bold"),
-                 bg="#f8fafc", fg="#0f172a").pack(anchor="w")
+                 bg=T["bg"], fg=T["ink"]).pack(anchor="w")
         tk.Label(title_col, text="Choose a game to start practising.",
-                 font=("Helvetica", 13), bg="#f8fafc", fg="#475569").pack(anchor="w", pady=(4, 0))
+                 font=("Helvetica", 13), bg=T["bg"], fg=T["muted"]).pack(anchor="w", pady=(4, 0))
 
         # Profile pill + switch button
-        profile_row = tk.Frame(title_col, bg="#f8fafc")
+        profile_row = tk.Frame(title_col, bg=T["bg"])
         profile_row.pack(anchor="w", pady=(8, 0))
         tk.Label(profile_row, text=f"👤  {self._profile_name}",
                  font=("Helvetica", 10, "bold"),
-                 bg="#e2e8f0", fg="#475569",
+                 bg=T["card_border"], fg=T["muted"],
                  padx=10, pady=4).pack(side=tk.LEFT)
         tk.Button(profile_row, text="Switch profile",
-                  font=("Helvetica", 9), bg="#f8fafc", fg="#94a3b8",
+                  font=("Helvetica", 9), bg=T["bg"], fg=T["dim"],
                   relief="flat", bd=0, padx=8, cursor="hand2",
                   activebackground="#f8fafc", activeforeground="#475569",
                   command=self.show_profiles).pack(side=tk.LEFT, padx=(8, 0))
         tk.Button(profile_row, text="⚙",
-                  font=("Helvetica", 10), bg="#f8fafc", fg="#94a3b8",
+                  font=("Helvetica", 10), bg=T["bg"], fg=T["dim"],
                   relief="flat", bd=0, padx=6, cursor="hand2",
                   activebackground="#f8fafc", activeforeground="#475569",
                   command=self._show_settings).pack(side=tk.LEFT, padx=(4, 0))
 
         # Right: points + achievements button
-        right_col = tk.Frame(hdr, bg="#f8fafc")
+        right_col = tk.Frame(hdr, bg=T["bg"])
         right_col.pack(side=tk.RIGHT, anchor="ne")
 
         pts          = self._ach_store.get_points()
@@ -596,13 +793,13 @@ class App:
         tk.Label(right_col,
                  text=f"⭐ {pts:,} pts",
                  font=("Helvetica", 14, "bold"),
-                 bg="#f8fafc", fg="#f59e0b").pack(anchor="e")
+                 bg=T["bg"], fg="#f59e0b").pack(anchor="e")
         tk.Label(right_col,
                  text=f"{earned_count} / {total_count} achievements",
-                 font=("Helvetica", 9), bg="#f8fafc", fg="#94a3b8").pack(anchor="e", pady=(2, 8))
+                 font=("Helvetica", 9), bg=T["bg"], fg=T["dim"]).pack(anchor="e", pady=(2, 8))
         tk.Button(right_col, text="🏆  Trophy Room",
                   font=("Helvetica", 10, "bold"),
-                  bg="#0f172a", fg="white", relief="flat", bd=0,
+                  bg=T["btn_primary_bg"], fg=T["btn_primary_fg"], relief="flat", bd=0,
                   padx=14, pady=7, cursor="hand2",
                   activebackground="#1e293b", activeforeground="white",
                   command=self._show_achievements).pack(anchor="e")
@@ -613,14 +810,14 @@ class App:
         # families plug in by appending an entry to GAMES.
         self._tile_images = []   # release prior refs; renderer repopulates
 
-        family_section = tk.Frame(inner, bg="#f8fafc", padx=48)
+        family_section = tk.Frame(inner, bg=T["bg"], padx=48)
         family_section.pack(fill=tk.X, pady=(0, 28))
 
         tk.Label(family_section, text="GAMES",
                  font=("Helvetica", 13, "bold"),
-                 bg="#f8fafc", fg="#94a3b8").pack(anchor="w", pady=(0, 12))
+                 bg=T["bg"], fg=T["dim"]).pack(anchor="w", pady=(0, 12))
 
-        family_grid = tk.Frame(family_section, bg="#f8fafc")
+        family_grid = tk.Frame(family_section, bg=T["bg"])
         family_grid.pack(fill=tk.X)
         for col in range(len(GAMES)):
             family_grid.columnconfigure(col, weight=1)
@@ -632,10 +829,10 @@ class App:
         self._tools_row(inner)
 
         # ── Footer ────────────────────────────────────────────────────────────
-        tk.Frame(inner, bg="#e2e8f0", height=1).pack(fill=tk.X, padx=48, pady=(24, 0))
+        tk.Frame(inner, bg=T["card_border"], height=1).pack(fill=tk.X, padx=48, pady=(24, 0))
         tk.Label(inner,
                  text=f"Math Practice  v{__version__}  ·  © 2026 Aleksander Lie",
-                 font=("Helvetica", 8), bg="#f8fafc", fg="#cbd5e1").pack(pady=(6, 24))
+                 font=("Helvetica", 8), bg=T["bg"], fg=T["faint"]).pack(pady=(6, 24))
 
     # ============================================================ family tiles
 
@@ -646,16 +843,17 @@ class App:
         status pills (one per difficulty). Clicking anywhere on the tile
         opens the difficulty-selection page for the family.
         """
-        card = tk.Frame(parent, bg="white",
-                        highlightbackground="#e2e8f0", highlightthickness=1,
+        T = theme()
+        card = tk.Frame(parent, bg=T["card_bg"],
+                        highlightbackground=T["card_border"], highlightthickness=1,
                         cursor="hand2")
         card.grid(row=0, column=col, sticky="nsew", padx=padx)
 
-        inner = tk.Frame(card, bg="white", padx=20, pady=20)
+        inner = tk.Frame(card, bg=T["card_bg"], padx=20, pady=20)
         inner.pack(fill=tk.BOTH, expand=True)
 
         # Top: family glyph in a colored disc + "Game" pill on the right.
-        top = tk.Frame(inner, bg="white")
+        top = tk.Frame(inner, bg=T["card_bg"])
         top.pack(fill=tk.X, pady=(0, 12))
 
         glyph_box = tk.Frame(top, bg=family["accent"], padx=12, pady=4)
@@ -672,10 +870,10 @@ class App:
         # Family label + tagline
         tk.Label(inner, text=family["label"],
                  font=("Helvetica", 14, "bold"),
-                 bg="white", fg="#0f172a",
+                 bg=T["card_bg"], fg=T["ink"],
                  wraplength=220, justify="left", anchor="w").pack(fill=tk.X)
         tk.Label(inner, text=family["tagline"],
-                 font=("Helvetica", 9), bg="white", fg="#64748b",
+                 font=("Helvetica", 9), bg=T["card_bg"], fg=T["muted"],
                  wraplength=220, justify="left", anchor="w").pack(fill=tk.X,
                                                                    pady=(4, 14))
 
@@ -683,7 +881,7 @@ class App:
         # State: "open", "locked", or "sharp" (sharp_<gid> achievement
         # earned). Surfaces progression at a glance without making the
         # user click into the family.
-        status_row = tk.Frame(inner, bg="white")
+        status_row = tk.Frame(inner, bg=T["card_bg"])
         status_row.pack(fill=tk.X, pady=(0, 10))
         for tier in _DIFFICULTY_TIERS:
             diff = next((d for d in family["difficulties"]
@@ -729,14 +927,15 @@ class App:
         Shop placeholder (locked, ships in v0.8.0). Order is: Practice
         Missed, Progress & Stats, Tutorials, Shop.
         """
-        section = tk.Frame(parent, bg="#f8fafc", padx=48)
+        T = theme()
+        section = tk.Frame(parent, bg=T["bg"], padx=48)
         section.pack(fill=tk.X, pady=(0, 28))
 
         tk.Label(section, text="TOOLS",
                  font=("Helvetica", 13, "bold"),
-                 bg="#f8fafc", fg="#94a3b8").pack(anchor="w", pady=(0, 12))
+                 bg=T["bg"], fg=T["dim"]).pack(anchor="w", pady=(0, 12))
 
-        cards = tk.Frame(section, bg="#f8fafc")
+        cards = tk.Frame(section, bg=T["bg"])
         cards.pack(fill=tk.X)
         for col in range(4):
             cards.columnconfigure(col, weight=1)
@@ -745,14 +944,14 @@ class App:
         count   = self._missed_store.count()
         enabled = count > 0
 
-        card_bg = "white"   if enabled else "#f1f5f9"
-        name_fg = "#0f172a" if enabled else "#94a3b8"
-        desc_fg = "#64748b" if enabled else "#94a3b8"
+        card_bg = T["card_bg"] if enabled else T["card_dim"]
+        name_fg = T["ink"]      if enabled else T["dim"]
+        desc_fg = T["muted"]    if enabled else T["dim"]
         desc    = (f"{count} question{'s' if count != 1 else ''} waiting for review."
                    if enabled else "No missed questions yet — keep playing!")
 
         card = tk.Frame(cards, bg=card_bg,
-                        highlightbackground="#e2e8f0", highlightthickness=1,
+                        highlightbackground=T["card_border"], highlightthickness=1,
                         cursor="hand2" if enabled else "arrow")
         card.grid(row=0, column=0, sticky="nsew", padx=(0, 14))
 
@@ -796,12 +995,12 @@ class App:
         else:
             stats_desc = "Charts, trends, parent PDF."
 
-        stats_card = tk.Frame(cards, bg="white",
-                              highlightbackground="#e2e8f0", highlightthickness=1,
+        stats_card = tk.Frame(cards, bg=T["card_bg"],
+                              highlightbackground=T["card_border"], highlightthickness=1,
                               cursor="hand2")
         stats_card.grid(row=0, column=1, sticky="nsew", padx=(0, 14))
 
-        stats_inner = tk.Frame(stats_card, bg="white", padx=20, pady=20)
+        stats_inner = tk.Frame(stats_card, bg=T["card_bg"], padx=20, pady=20)
         stats_inner.pack(fill=tk.BOTH, expand=True)
 
         tk.Label(stats_inner, text="Insights",
@@ -810,9 +1009,9 @@ class App:
                  padx=10, pady=3).pack(anchor="w", pady=(0, 12))
         tk.Label(stats_inner, text="Progress & Stats",
                  font=("Helvetica", 14, "bold"),
-                 bg="white", fg="#0f172a").pack(anchor="w")
+                 bg=T["card_bg"], fg=T["ink"]).pack(anchor="w")
         tk.Label(stats_inner, text=stats_desc,
-                 font=("Helvetica", 9), bg="white", fg="#64748b",
+                 font=("Helvetica", 9), bg=T["card_bg"], fg=T["muted"],
                  justify="left", wraplength=200).pack(anchor="w", pady=(6, 14))
 
         tk.Button(
@@ -839,12 +1038,12 @@ class App:
         tut_desc = (f"{unlocked}/{total} guide{'s' if total != 1 else ''} "
                     f"unlocked.\nStep-by-step walkthroughs.")
 
-        tut_card = tk.Frame(cards, bg="white",
-                            highlightbackground="#e2e8f0", highlightthickness=1,
+        tut_card = tk.Frame(cards, bg=T["card_bg"],
+                            highlightbackground=T["card_border"], highlightthickness=1,
                             cursor="hand2")
         tut_card.grid(row=0, column=2, sticky="nsew", padx=(0, 14))
 
-        tut_inner = tk.Frame(tut_card, bg="white", padx=20, pady=20)
+        tut_inner = tk.Frame(tut_card, bg=T["card_bg"], padx=20, pady=20)
         tut_inner.pack(fill=tk.BOTH, expand=True)
 
         tk.Label(tut_inner, text="Learn",
@@ -853,9 +1052,9 @@ class App:
                  padx=10, pady=3).pack(anchor="w", pady=(0, 12))
         tk.Label(tut_inner, text="Tutorials",
                  font=("Helvetica", 14, "bold"),
-                 bg="white", fg="#0f172a").pack(anchor="w")
+                 bg=T["card_bg"], fg=T["ink"]).pack(anchor="w")
         tk.Label(tut_inner, text=tut_desc,
-                 font=("Helvetica", 9), bg="white", fg="#64748b",
+                 font=("Helvetica", 9), bg=T["card_bg"], fg=T["muted"],
                  justify="left", wraplength=200).pack(anchor="w", pady=(6, 14))
 
         tk.Button(
@@ -870,43 +1069,50 @@ class App:
         for w in (tut_card, tut_inner):
             w.bind("<Button-1>", lambda e: self._launch_tutorials())
 
-        # ── Shop card (locked placeholder, ships v0.8.0) ─────────────────
-        # Reserved for the achievement-points spending loop: themes
-        # (dark mode), avatars, frames. Click → messagebox describing
-        # planned content. Architecture note: the tile is a regular
-        # Tools-row entry, not a special case — when v0.8.0 wires it up
-        # we just flip `enabled` and replace `_show_shop` with a real
-        # launcher.
+        # ── Shop card ────────────────────────────────────────────────────
+        # Functional shop tile (v0.7.13). Click → modal listing every
+        # entry in SHOP_ITEMS with its own buy / owned state.
         self._shop_tile(cards)
 
     def _shop_tile(self, parent):
-        """Locked Shop tile in the Tools row. Placeholder for v0.8.0."""
-        card = tk.Frame(parent, bg="#f1f5f9",
-                        highlightbackground="#e2e8f0", highlightthickness=1,
+        """Tools-row entry that opens the Shop modal."""
+        T = theme()
+
+        # Item count summary in the subtitle so the pupil knows the
+        # shop is non-empty and how much progress they have.
+        total = len(SHOP_ITEMS)
+        owned = sum(1 for it in SHOP_ITEMS
+                    if self._purchases_store and self._purchases_store.has(it["id"]))
+        if total == 0:
+            subtitle = "Nothing on the shelves yet."
+        else:
+            subtitle = f"{owned}/{total} items owned. Spend your points."
+
+        card = tk.Frame(parent, bg=T["card_bg"],
+                        highlightbackground=T["card_border"], highlightthickness=1,
                         cursor="hand2")
         card.grid(row=0, column=3, sticky="nsew")
 
-        inner = tk.Frame(card, bg="#f1f5f9", padx=20, pady=20)
+        inner = tk.Frame(card, bg=T["card_bg"], padx=20, pady=20)
         inner.pack(fill=tk.BOTH, expand=True)
 
-        tk.Label(inner, text="Coming v0.8.0",
+        tk.Label(inner, text="Spend",
                  font=("Helvetica", 9, "bold"),
-                 bg="#faf5ff", fg="#9333ea",
+                 bg=T["shop_bg"], fg=T["shop"],
                  padx=10, pady=3).pack(anchor="w", pady=(0, 12))
         tk.Label(inner, text="🛍  Shop",
                  font=("Helvetica", 14, "bold"),
-                 bg="#f1f5f9", fg="#475569").pack(anchor="w")
-        tk.Label(inner,
-                 text="Spend points on themes, avatars, and frames.",
-                 font=("Helvetica", 9), bg="#f1f5f9", fg="#94a3b8",
+                 bg=T["card_bg"], fg=T["ink"]).pack(anchor="w")
+        tk.Label(inner, text=subtitle,
+                 font=("Helvetica", 9), bg=T["card_bg"], fg=T["muted"],
                  justify="left", wraplength=200).pack(anchor="w", pady=(6, 14))
 
         tk.Button(
-            inner, text="🔒 Locked",
+            inner, text="Open  →",
             font=("Helvetica", 10, "bold"),
-            bg="#e2e8f0", fg="#94a3b8",
+            bg=T["shop"], fg="white",
             relief="flat", bd=0, padx=12, pady=5, cursor="hand2",
-            activebackground="#cbd5e1", activeforeground="#475569",
+            activebackground=T["accent_dark"], activeforeground="white",
             command=self._show_shop,
         ).pack(anchor="w")
 
@@ -914,15 +1120,211 @@ class App:
             w.bind("<Button-1>", lambda e: self._show_shop())
 
     def _show_shop(self):
-        """Placeholder Shop entry. Replace with a real launcher in v0.8.0."""
-        messagebox.showinfo(
-            "Shop — coming in v0.8.0",
-            "The Shop will let you spend achievement points on:\n\n"
-            "  • Color themes  (Dark mode is the priority unlock)\n"
-            "  • Avatar portraits  (fantasy classes — knight, wizard, ...)\n"
-            "  • Avatar border frames\n\n"
-            "Keep earning points — they'll have somewhere to go soon.",
+        """Modal listing SHOP_ITEMS with buy / owned state per entry."""
+        T = theme()
+        root = self.root
+        root.update_idletasks()
+        cx = root.winfo_x() + root.winfo_width()  // 2
+        cy = root.winfo_y() + root.winfo_height() // 2
+
+        win = tk.Toplevel(root)
+        win.title("Shop")
+        win.configure(bg=T["bg"])
+        win.transient(root)
+        win.grab_set()
+
+        w_px, h_px = 560, 480
+        win.geometry(f"{w_px}x{h_px}+{cx - w_px // 2}+{cy - h_px // 2}")
+        win.resizable(False, False)
+
+        # Header — title + balance
+        hdr = tk.Frame(win, bg=T["btn_primary_bg"], padx=24, pady=16)
+        hdr.pack(fill=tk.X)
+        tk.Label(hdr, text="🛍  Shop",
+                 font=("Helvetica", 16, "bold"),
+                 bg=T["btn_primary_bg"], fg=T["btn_primary_fg"]).pack(side=tk.LEFT)
+
+        balance_lbl = tk.Label(
+            hdr, text=f"⭐ {self._ach_store.get_points():,} pts",
+            font=("Helvetica", 12, "bold"),
+            bg=T["btn_primary_bg"], fg="#f59e0b",
         )
+        balance_lbl.pack(side=tk.RIGHT)
+
+        # Body
+        body = tk.Frame(win, bg=T["bg"], padx=20, pady=18)
+        body.pack(fill=tk.BOTH, expand=True)
+
+        if not SHOP_ITEMS:
+            tk.Label(body, text="No items in stock yet.",
+                     font=("Helvetica", 11),
+                     bg=T["bg"], fg=T["muted"]).pack(expand=True)
+
+        # Render each item card. Cards are self-refreshing — `_render_item`
+        # destroys + redraws the per-item frame so the Buy → Owned
+        # transition lands without rebuilding the whole modal.
+        item_frames = {}
+
+        def _refresh_balance():
+            balance_lbl.config(text=f"⭐ {self._ach_store.get_points():,} pts")
+
+        def _render_item(item):
+            owned = self._purchases_store.has(item["id"])
+            cost  = item["price"]
+            can_afford = self._ach_store.get_points() >= cost
+
+            # Achievement-gate (v0.7.13.2). When `unlock_req` names an
+            # achievement id, the item can't be bought until that
+            # achievement is earned — even if the pupil has the points.
+            # Surfaces the requirement so the user knows how to progress.
+            req_id = item.get("unlock_req")
+            req_met = (req_id is None) or self._ach_store.has(req_id)
+            req_ach = ACHIEVEMENTS_BY_ID.get(req_id) if req_id else None
+
+            row = tk.Frame(body, bg=T["card_bg"],
+                           highlightbackground=T["card_border"], highlightthickness=1)
+            row.pack(fill=tk.X, pady=(0, 12))
+            row_inner = tk.Frame(row, bg=T["card_bg"], padx=18, pady=14)
+            row_inner.pack(fill=tk.X)
+
+            # Left column: icon
+            tk.Label(row_inner, text=item["icon"],
+                     font=("Helvetica", 28),
+                     bg=T["card_bg"], fg=T["ink"]).pack(side=tk.LEFT, padx=(0, 14))
+
+            # Middle column: name / category / desc
+            text_col = tk.Frame(row_inner, bg=T["card_bg"])
+            text_col.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+            head = tk.Frame(text_col, bg=T["card_bg"])
+            head.pack(fill=tk.X)
+            tk.Label(head, text=item["name"],
+                     font=("Helvetica", 13, "bold"),
+                     bg=T["card_bg"], fg=T["ink"]).pack(side=tk.LEFT)
+            tk.Label(head, text=f"  {item['category']}",
+                     font=("Helvetica", 9),
+                     bg=T["card_bg"], fg=T["dim"]).pack(side=tk.LEFT, padx=(6, 0))
+            tk.Label(text_col, text=item["desc"],
+                     font=("Helvetica", 9),
+                     bg=T["card_bg"], fg=T["muted"],
+                     justify="left", wraplength=320,
+                     anchor="w").pack(fill=tk.X, pady=(2, 0))
+
+            # Right column: price + buy/owned button
+            right_col = tk.Frame(row_inner, bg=T["card_bg"])
+            right_col.pack(side=tk.RIGHT, padx=(14, 0))
+
+            if owned:
+                tk.Label(right_col, text="✓ Owned",
+                         font=("Helvetica", 10, "bold"),
+                         bg=T["good_bg"], fg=T["good"],
+                         padx=12, pady=6).pack()
+            else:
+                tk.Label(right_col, text=f"⭐ {cost:,} pts",
+                         font=("Helvetica", 11, "bold"),
+                         bg=T["card_bg"], fg=T["ink"]).pack(pady=(0, 6))
+
+                if not req_met:
+                    # Achievement-locked. Show a hint instead of Buy and
+                    # surface the requirement description in the body so
+                    # the pupil knows what to chase.
+                    btn = tk.Button(
+                        right_col, text="🔒 Locked",
+                        font=("Helvetica", 10, "bold"),
+                        bg=T["soft"], fg=T["dim"],
+                        relief="flat", bd=0, padx=12, pady=5,
+                        cursor="arrow", state="disabled",
+                    )
+                    if req_ach:
+                        tk.Label(text_col,
+                                 text=f"🔒 Earn '{req_ach['name']}' first "
+                                      f"({req_ach.get('desc','')})",
+                                 font=("Helvetica", 9, "bold"),
+                                 bg=T["card_bg"], fg=T["warn"],
+                                 wraplength=320, justify="left", anchor="w"
+                                 ).pack(fill=tk.X, pady=(4, 0))
+                elif can_afford:
+                    btn = tk.Button(
+                        right_col, text="Buy",
+                        font=("Helvetica", 10, "bold"),
+                        bg=T["shop"], fg="white",
+                        relief="flat", bd=0, padx=18, pady=5, cursor="hand2",
+                        activebackground=T["accent_dark"], activeforeground="white",
+                        command=lambda i=item: _buy(i),
+                    )
+                else:
+                    btn = tk.Button(
+                        right_col, text="Need points",
+                        font=("Helvetica", 10, "bold"),
+                        bg=T["soft"], fg=T["dim"],
+                        relief="flat", bd=0, padx=12, pady=5,
+                        cursor="arrow", state="disabled",
+                    )
+                btn.pack()
+
+            return row
+
+        def _buy(item):
+            cost = item["price"]
+            if self._purchases_store.has(item["id"]):
+                return
+            # Defensive: re-check the achievement gate at click time so a
+            # stale UI can't be exploited (e.g. user opened shop, earned
+            # nothing, but unlock state somehow flipped). The shop modal
+            # rebuilds after every purchase so this normally won't fire.
+            req_id = item.get("unlock_req")
+            if req_id and not self._ach_store.has(req_id):
+                req_ach = ACHIEVEMENTS_BY_ID.get(req_id, {})
+                messagebox.showwarning(
+                    "Locked",
+                    f"This item requires the '{req_ach.get('name', req_id)}' "
+                    f"achievement first.",
+                    parent=win,
+                )
+                return
+            if not self._ach_store.spend(cost):
+                messagebox.showwarning(
+                    "Not enough points",
+                    f"You need {cost:,} points to buy {item['name']}, "
+                    f"but only have {self._ach_store.get_points():,}.",
+                    parent=win,
+                )
+                return
+            self._purchases_store.purchase(item["id"])
+            on_buy = item.get("on_buy")
+            if callable(on_buy):
+                try:
+                    on_buy(self)
+                except Exception:
+                    pass
+
+            messagebox.showinfo(
+                "Purchase complete",
+                f"{item['icon']}  {item['name']} unlocked!\n\n"
+                + ("Toggle it on from Settings → Appearance."
+                   if item["id"] == "dark_mode"
+                   else "Enjoy your new cosmetic."),
+                parent=win,
+            )
+
+            # Re-render: rebuild the list cleanly so owned/locked states
+            # all update together (e.g. balance change might disable
+            # other Buy buttons).
+            for w in body.winfo_children():
+                w.destroy()
+            for it in SHOP_ITEMS:
+                item_frames[it["id"]] = _render_item(it)
+            _refresh_balance()
+
+        for it in SHOP_ITEMS:
+            item_frames[it["id"]] = _render_item(it)
+
+        # Footer close
+        tk.Button(win, text="Close", command=win.destroy,
+                  font=("Helvetica", 11),
+                  bg=T["card_bg"], fg=T["muted"],
+                  relief="solid", bd=1, padx=20, pady=6, cursor="hand2"
+                  ).pack(pady=10)
 
     # ============================================================ difficulty page
 
@@ -938,25 +1340,26 @@ class App:
         the renderer falls back to the tier emoji glyph (🌱 / 🔥 / ⚡).
         Adding art later is a zero-code drop-in.
         """
+        T = theme()
         self._clear()
         self._current_family = family
         self._tile_images    = []   # release prior refs
 
-        outer = tk.Frame(self.root, bg="#f8fafc")
+        outer = tk.Frame(self.root, bg=T["bg"])
         outer.pack(fill=tk.BOTH, expand=True)
         self._current = outer
 
         # Top bar — back button only
-        top = tk.Frame(outer, bg="#f8fafc", padx=24, pady=10)
+        top = tk.Frame(outer, bg=T["bg"], padx=24, pady=10)
         top.pack(fill=tk.X)
         tk.Button(top, text="← Menu",
-                  font=("Helvetica", 10), bg="#f8fafc", fg="#475569",
+                  font=("Helvetica", 10), bg=T["bg"], fg=T["muted"],
                   relief="flat", bd=0, cursor="hand2",
                   activebackground="#f8fafc", activeforeground="#0f172a",
                   command=self.show_menu).pack(side=tk.LEFT)
 
         # Header — family glyph + label + tagline
-        hdr = tk.Frame(outer, bg="#f8fafc", padx=48, pady=18)
+        hdr = tk.Frame(outer, bg=T["bg"], padx=48, pady=18)
         hdr.pack(fill=tk.X)
 
         glyph_box = tk.Frame(hdr, bg=family["accent"], padx=14, pady=8)
@@ -965,27 +1368,31 @@ class App:
                  font=("Helvetica", 28, "bold"),
                  bg=family["accent"], fg="white").pack()
 
-        title_col = tk.Frame(hdr, bg="#f8fafc")
+        title_col = tk.Frame(hdr, bg=T["bg"])
         title_col.pack(side=tk.LEFT, padx=(16, 0), fill=tk.X, expand=True)
         tk.Label(title_col, text=family["label"],
                  font=("Helvetica", 26, "bold"),
-                 bg="#f8fafc", fg="#0f172a").pack(anchor="w")
+                 bg=T["bg"], fg=T["ink"]).pack(anchor="w")
         tk.Label(title_col, text=family["tagline"],
                  font=("Helvetica", 11),
-                 bg="#f8fafc", fg="#64748b").pack(anchor="w", pady=(4, 0))
+                 bg=T["bg"], fg=T["muted"]).pack(anchor="w", pady=(4, 0))
         tk.Label(title_col, text="Choose a difficulty.",
                  font=("Helvetica", 11, "bold"),
-                 bg="#f8fafc", fg="#475569").pack(anchor="w", pady=(8, 0))
+                 bg=T["bg"], fg=T["muted"]).pack(anchor="w", pady=(8, 0))
 
-        # 3-column difficulty grid
-        cards_wrap = tk.Frame(outer, bg="#f8fafc", padx=48, pady=20)
-        cards_wrap.pack(fill=tk.BOTH, expand=True)
+        # 3-column difficulty grid.
+        # Cards size to their content and sit at the top of the wrap
+        # rather than stretching to fill the window. Stretching produced
+        # a tall white void below the Play button on a maximised window;
+        # `sticky="new"` plus no rowconfigure-weight keeps each card
+        # only as tall as the asset slot + body content require.
+        cards_wrap = tk.Frame(outer, bg=T["bg"], padx=48, pady=20)
+        cards_wrap.pack(fill=tk.X, expand=False)
 
-        cards = tk.Frame(cards_wrap, bg="#f8fafc")
-        cards.pack(fill=tk.BOTH, expand=True)
+        cards = tk.Frame(cards_wrap, bg=T["bg"])
+        cards.pack(fill=tk.X)
         for col in range(3):
             cards.columnconfigure(col, weight=1)
-        cards.rowconfigure(0, weight=1)
 
         for col, diff in enumerate(family["difficulties"]):
             padx   = (0, 16) if col < len(family["difficulties"]) - 1 else 0
@@ -1006,23 +1413,31 @@ class App:
           4. Description.
           5. Play button (or locked-unlock hint).
         """
+        T = theme()
         # Tier metadata (badge colours match the existing per-difficulty palette).
         tier = next((t for t in _DIFFICULTY_TIERS if t["key"] == diff["key"]), _DIFFICULTY_TIERS[0])
         T    = theme()
         badge_bg = T[tier["badge_bg_token"]]
         badge_fg = T[tier["badge_fg_token"]]
 
-        bg     = "white"   if not locked else "#f8fafc"
-        ink_fg = "#0f172a" if not locked else "#94a3b8"
-        sub_fg = "#64748b" if not locked else "#94a3b8"
+        bg     = T["card_bg"] if not locked else T["card_dim"]
+        ink_fg = T["ink"]      if not locked else T["dim"]
+        sub_fg = T["muted"]    if not locked else T["dim"]
 
         card = tk.Frame(parent, bg=bg,
-                        highlightbackground="#e2e8f0", highlightthickness=1,
+                        highlightbackground=T["card_border"], highlightthickness=1,
                         cursor="hand2")
-        card.grid(row=0, column=col, sticky="nsew", padx=padx)
+        # `sticky="new"` (not nsew) — cards top-align and only take the
+        # height their content needs. Combined with no rowconfigure-weight
+        # on the parent, this kills the empty-white-void problem on
+        # maximised windows.
+        card.grid(row=0, column=col, sticky="new", padx=padx)
 
-        # Asset slot — fixed 200×120 box, centered glyph or PNG.
-        asset_slot = tk.Frame(card, bg=bg, height=140)
+        # Asset slot — fixed-height 160px box, centered glyph or PNG.
+        # Slightly taller than v0.7.12's first cut so the tier glyph
+        # has more breathing room without a hairline divider stranded
+        # in the middle of the card.
+        asset_slot = tk.Frame(card, bg=bg, height=160)
         asset_slot.pack(fill=tk.X)
         asset_slot.pack_propagate(False)
 
@@ -1037,7 +1452,7 @@ class App:
                      bg=bg, fg=ink_fg if not locked else "#cbd5e1").pack(expand=True)
 
         # 1px divider between asset and body
-        tk.Frame(card, bg="#e2e8f0", height=1).pack(fill=tk.X)
+        tk.Frame(card, bg=T["card_border"], height=1).pack(fill=tk.X)
 
         inner = tk.Frame(card, bg=bg, padx=20, pady=18)
         inner.pack(fill=tk.BOTH, expand=True)
@@ -1052,7 +1467,7 @@ class App:
         if locked:
             tk.Label(badge_row, text="  🔒 Locked",
                      font=("Helvetica", 9, "bold"),
-                     bg=bg, fg="#94a3b8").pack(side=tk.LEFT)
+                     bg=bg, fg=T["dim"]).pack(side=tk.LEFT)
 
         tk.Label(inner, text=diff["name"],
                  font=("Helvetica", 15, "bold"),
@@ -1068,7 +1483,7 @@ class App:
         tk.Button(
             inner, text="Play  →",
             font=("Helvetica", 10, "bold"),
-            bg="#0f172a", fg="white", relief="flat", bd=0,
+            bg=T["btn_primary_bg"], fg=T["btn_primary_fg"], relief="flat", bd=0,
             padx=14, pady=6, cursor="hand2",
             activebackground="#1e293b", activeforeground="white",
             command=lambda f=family, d=diff: self._launch(f, d),
@@ -1080,6 +1495,7 @@ class App:
 
     def _render_lock_hint(self, parent, unlock_req):
         """Render the unlock-hint block inside a locked difficulty card."""
+        T = theme()
         req_name = req_desc = req_game = ""
         if unlock_req:
             ach = ACHIEVEMENTS_BY_ID.get(unlock_req)
@@ -1091,11 +1507,11 @@ class App:
         unlock_label = (f"Unlock: '{req_name}' in {req_game}"
                         if req_game else f"Unlock: '{req_name}' achievement")
 
-        unlock_frame = tk.Frame(parent, bg="#e2e8f0",
-                                highlightbackground="#cbd5e1", highlightthickness=1)
+        unlock_frame = tk.Frame(parent, bg=T["card_border"],
+                                highlightbackground=T["faint"], highlightthickness=1)
         unlock_frame.pack(fill=tk.X, pady=(0, 8))
         tk.Label(unlock_frame, text=unlock_label,
-                 font=("Helvetica", 9), bg="#e2e8f0", fg="#64748b",
+                 font=("Helvetica", 9), bg=T["card_border"], fg=T["muted"],
                  padx=10, pady=6, wraplength=220, justify="left").pack(anchor="w")
 
         def _show_lock_info(e=None):
@@ -1113,6 +1529,7 @@ class App:
 
     def _show_achievements(self):
         """Open the Trophy Room window."""
+        T = theme()
         root = self.root
         root.update_idletasks()
         cx = root.winfo_x() + root.winfo_width()  // 2
@@ -1120,30 +1537,48 @@ class App:
 
         win = tk.Toplevel(root)
         win.title("Trophy Room")
-        win.configure(bg="#f8fafc")
+        win.configure(bg=T["bg"])
         win.geometry(f"640x580+{cx - 320}+{cy - 290}")
         win.resizable(True, True)
 
-        hdr = tk.Frame(win, bg="#0f172a", padx=24, pady=16)
+        # Header strip — uses btn_primary_bg as a "branded title bar"
+        # so it stays a clear contrast band in every theme (dark slate
+        # in light mode, indigo in dark mode, phosphor green in matrix).
+        hdr = tk.Frame(win, bg=T["btn_primary_bg"], padx=24, pady=14)
         hdr.pack(fill=tk.X)
         tk.Label(hdr, text="🏆  Trophy Room",
                  font=("Helvetica", 16, "bold"),
-                 bg="#0f172a", fg="white").pack(side=tk.LEFT)
+                 bg=T["btn_primary_bg"], fg=T["btn_primary_fg"]).pack(side=tk.LEFT)
 
-        pts          = self._ach_store.get_points()
-        earned_count = len(self._ach_store.get_earned())
-        total_count  = len(ACHIEVEMENTS)
-        tk.Label(hdr, text=f"⭐ {pts:,} pts  ·  {earned_count}/{total_count}",
-                 font=("Helvetica", 11), bg="#0f172a", fg="#f59e0b").pack(side=tk.RIGHT)
+        pts            = self._ach_store.get_points()
+        earned_count   = len(self._ach_store.get_earned())
+        total_count    = len(ACHIEVEMENTS)
+        spent          = self._ach_store.get_total_spent()
+        lifetime       = self._ach_store.get_lifetime_earned()
 
-        body_outer = tk.Frame(win, bg="#f8fafc")
+        # Right-side stat block: balance, achievement progress, and
+        # (when the profile has spent anything) a lifetime/spent line.
+        right_block = tk.Frame(hdr, bg=T["btn_primary_bg"])
+        right_block.pack(side=tk.RIGHT)
+        tk.Label(right_block,
+                 text=f"⭐ {pts:,} pts  ·  {earned_count}/{total_count}",
+                 font=("Helvetica", 11, "bold"),
+                 bg=T["btn_primary_bg"], fg="#f59e0b").pack(anchor="e")
+        if spent > 0:
+            tk.Label(right_block,
+                     text=f"{lifetime:,} lifetime  ·  {spent:,} spent",
+                     font=("Helvetica", 9),
+                     bg=T["btn_primary_bg"], fg=T["btn_primary_fg"]
+                     ).pack(anchor="e", pady=(2, 0))
+
+        body_outer = tk.Frame(win, bg=T["bg"])
         body_outer.pack(fill=tk.BOTH, expand=True)
 
         vsb = ttk.Scrollbar(body_outer, orient="vertical")
         vsb.pack(side=tk.RIGHT, fill=tk.Y)
 
         txt = tk.Text(
-            body_outer, bg="#f8fafc", relief="flat", bd=0,
+            body_outer, bg=T["bg"], relief="flat", bd=0,
             cursor="arrow", wrap="word", font=("Helvetica", 11),
             yscrollcommand=vsb.set, highlightthickness=0, state="normal",
         )
@@ -1237,15 +1672,10 @@ class App:
     # ----------------------------------------------------------------- launch
 
     def _launch(self, family, difficulty):
-        """Launch a game.
-
-        Back button on the game returns to the difficulty-selection
-        screen for the same family (not all the way to the main menu) —
-        the pupil typically wants to try a sibling difficulty next, and
-        a single extra back-press still gets them to the menu.
-        """
+        """Launch a game. Back returns to the family's difficulty page."""
+        T = theme()
         self._clear()
-        frame = tk.Frame(self.root, bg="#f8fafc")
+        frame = tk.Frame(self.root, bg=T["bg"])
         frame.pack(fill=tk.BOTH, expand=True)
         self._current = frame
         difficulty["cls"](
@@ -1258,8 +1688,9 @@ class App:
         )
 
     def _launch_practice(self):
+        T = theme()
         self._clear()
-        frame = tk.Frame(self.root, bg="#f8fafc")
+        frame = tk.Frame(self.root, bg=T["bg"])
         frame.pack(fill=tk.BOTH, expand=True)
         self._current = frame
         PracticeMissed(frame,
@@ -1270,8 +1701,9 @@ class App:
                        sessions_store=self._sessions_store)
 
     def _launch_stats(self):
+        T = theme()
         self._clear()
-        frame = tk.Frame(self.root, bg="#f8fafc")
+        frame = tk.Frame(self.root, bg=T["bg"])
         frame.pack(fill=tk.BOTH, expand=True)
         self._current = frame
         StatsScreen(frame,
@@ -1282,8 +1714,9 @@ class App:
                     scores_store=self._scores_store)
 
     def _launch_tutorials(self):
+        T = theme()
         self._clear()
-        frame = tk.Frame(self.root, bg="#f8fafc")
+        frame = tk.Frame(self.root, bg=T["bg"])
         frame.pack(fill=tk.BOTH, expand=True)
         self._current = frame
         TutorialsPanel(frame,
@@ -1297,29 +1730,47 @@ class App:
             self._current = None
 
     def _install_wheel_handler(self):
-        """Install (or re-install) the root-level mousewheel handler.
+        """Install (or re-install) the root-level mousewheel handler."""
+        def _content_fits(t):
+            try:
+                first, last = t.yview()
+                return first <= 0.0 and last >= 1.0 - 1e-6
+            except Exception:
+                return True
 
-        Called from __init__ and from show_menu() so the menu reclaims the
-        <MouseWheel> binding after returning from a subscreen whose own
-        bind_all call overrode ours.
-        """
         def _wheel(e):
             t = self._scroll_target
-            if t:
-                try:
-                    t.yview_scroll(int(-1 * (e.delta / 120)), "units")
-                except Exception:
-                    pass
+            if not t or _content_fits(t):
+                return
+            try:
+                t.yview_scroll(int(-1 * (e.delta / 120)), "units")
+            except Exception:
+                pass
+
+        def _wheel_up(_e):
+            t = self._scroll_target
+            if not t or _content_fits(t):
+                return
+            try:
+                t.yview_scroll(-1, "units")
+            except Exception:
+                pass
+
+        def _wheel_down(_e):
+            t = self._scroll_target
+            if not t or _content_fits(t):
+                return
+            try:
+                t.yview_scroll(1, "units")
+            except Exception:
+                pass
+
         self.root.bind_all("<MouseWheel>", _wheel)
-        self.root.bind_all("<Button-4>",
-                           lambda e: self._scroll_target and
-                           self._scroll_target.yview_scroll(-1, "units"))
-        self.root.bind_all("<Button-5>",
-                           lambda e: self._scroll_target and
-                           self._scroll_target.yview_scroll(1, "units"))
+        self.root.bind_all("<Button-4>",   _wheel_up)
+        self.root.bind_all("<Button-5>",   _wheel_down)
 
 
-# ── Entry point ────────────────────────────────────────────────────────────────
+# Entry point
 
 def main():
     root = tk.Tk()

@@ -21,6 +21,7 @@ get_question_dict() returns None — fraction games do not feed the missed queue
 
 from fractions import Fraction
 from .base_game import BaseGame
+from .theme import theme
 
 
 # ──────────────────────────────────────────── utility functions ────────────────

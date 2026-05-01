@@ -133,6 +133,17 @@ class SlideshowFrame:
     # ================================================================ build
 
     def _build(self):
+        # v0.8.0: paint the parent frame with the slideshow's BG so the
+        # menu's dark-mode background doesn't leak through the .pack()
+        # pady gaps between top bar / header / card. SlideshowFrame is
+        # intentionally light-mode only (pedagogical canvas drawings need
+        # stable contrast), but the parent frame inherits the active
+        # theme — without this, dark stripes show between widgets.
+        try:
+            self.parent.configure(bg=BG)
+        except Exception:
+            pass
+
         # ── Top bar: back button + example selector ──────────────────────
         top = tk.Frame(self.parent, bg=BG, padx=24, pady=10)
         top.pack(fill=tk.X)

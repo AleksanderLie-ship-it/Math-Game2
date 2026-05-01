@@ -64,6 +64,10 @@ games/
     tutorial_mult_intermediate.py  content pack (shipped v0.7.7)
 
 assets/                       avatar packs + UI frames (used from v0.8.0)
+tools/                        dev-only verification harnesses
+  verify_div_intermediate.py  walks _short_div_steps + EXAMPLES invariants
+  verify_mult_intermediate.py walks _mult_steps + EXAMPLES invariants
+                              (run from project root: `python tools/verify_*.py`)
 ```
 
 Profile data on disk: `%APPDATA%\MathPractice\profiles\<name>\` containing `achievements.json`, `scores.json`, `missed.json`, `sessions.json`. Global settings at `%APPDATA%\MathPractice\settings.json`.
@@ -84,7 +88,53 @@ Rules that, if violated, break the product or break pupil trust. Do not re-deriv
 
 ## Current state
 
-Last shipped: **v0.7.12** (2026-05-01) — menu compression + foundation work for v0.8.0. Main menu collapses 12 game cards into **4 family tiles**; clicking a tile opens a new **difficulty-selection screen** with three cards (Beginner / Intermediate / Advanced) and a per-card asset slot. Tools row widened from 3 → 4 to host a **Shop** placeholder (locked, ships in v0.8.0). Game back-callback returns to the difficulty screen for the same family rather than the menu, so trying a sibling difficulty is one click.
+Last shipped: **v0.8.0** (2026-05-01) — **Shop & Cosmetics milestone open.** Decision to bump straight to a minor version: the breadth of work since v0.7.13 (persistent purchases, full theme architecture, achievement-gated cosmetics, lifetime point bookkeeping, two themed cosmetics shipping) is conceptually a minor bump rather than another patch suffix. Avatar packs + frames remain as v0.8.x work.
+
+What's shippable now:
+1. **Shop tile** is functional (replaces v0.7.12's "Coming v0.8.0" placeholder). Click → modal listing every `SHOP_ITEMS` entry with live Buy/Owned state, balance, and achievement-gate hints.
+2. **Two cosmetics live:** Dark Mode (500 pts, no gate) and Matrix Mode (1000 pts, gated on `sharp_mult_intermediate` so it lines up with the Multiplication: Advanced curriculum unlock).
+3. **Theme picker** in Settings → Appearance. Three palettes selectable when owned: Light (default, free), Dark, Matrix.
+4. **Lifetime tracking.** Trophy Room header shows `X lifetime · Y spent` once anything has been spent. `AchievementsStore.spend()` bumps `stats.total_spent`; `get_lifetime_earned() = points + total_spent`.
+5. **Theme rollout complete** for the always-on UI: menu, profile screen, settings, achievements popup, BaseGame, stats, practice missed, tutorials grid, all 12 per-game files. `SlideshowFrame` (tutorial slide pages) stays light by design — pedagogical canvas drawings need stable contrast — and on mount it paints `self.parent.configure(bg=BG)` so the active dark/matrix theme doesn't bleed through padding gaps.
+
+Polish items in this build:
+- Stats per-game table: alternating row colour was hardcoded `"white"`, fixed to `T["card_bg"]` so dark mode reads correctly.
+- Settings dialog: 460×400 → 560×600 + resizable height; all three themes fit without clipping.
+- Settings toggle row colours themed (ON/OFF button + label fg) — used to vanish on dark bg.
+- Tutorials grid (entry page, before clicking into a slideshow) follows the active theme; the slideshow itself remains light.
+- Bindfs note: large game.py rewrites kept truncating mid-write during this build. Recovery pattern is "Python-write the whole tail in one shot" — see the repair scripts in the working transcript. Any future big edit to `game.py` should prefer atomic `Write` over many sequential `Edit` calls.
+
+Adding more cosmetics (next concrete v0.8.x work): drop avatar PNGs in `assets/avatars/<pack>/<id>.png`, append `SHOP_ITEMS` entries with `category="Avatar"` + the asset path, render them as image cards in the shop modal. The asset loader already exists (`games/assets_loader.py`) — current consumer is just the difficulty-tile slot; same machinery serves avatars.
+
+Earlier: **v0.7.13.2** (2026-05-01) — Shop items can now be **achievement-gated** in addition to point-priced. New optional `unlock_req` field on `SHOP_ITEMS` entries names an achievement id; the item refuses purchase until that achievement is earned. **Matrix Mode requires `sharp_mult_intermediate`** — the same achievement that opens Multiplication: Advanced — so Matrix lines up with curriculum progression rather than being pure grind-for-points. Shop modal renders gated items with a yellow "🔒 Earn '<achievement>' first" line inside the card body (using the achievement's existing `desc`), and the Buy button is replaced with a disabled "🔒 Locked". `_buy()` re-checks `unlock_req` at click time as a defensive guard against any stale UI exploit. Dark Mode (no `unlock_req`) is unchanged: 500 pts, no progression gate. Adding new gated items now is a single field on a SHOP_ITEMS entry — keep `unlock_req=None` (or omit) for ungated items.
+
+Earlier: **v0.7.13.1** (2026-05-01) — dark-mode polish + **Matrix theme** (second paid cosmetic, 1000 pts). Three architectural additions on top of v0.7.13:
+
+1. **`btn_primary_bg` / `btn_primary_fg` / `card_dim` tokens** in `theme.py`. Primary action buttons (Trophy Room, Play, Export PDF, etc.) used to read `bg=T["ink"]` which is the *text* color in dark mode — buttons rendered light-grey on light-grey, invisible. The dedicated button-bg tokens give: light = dark slate, dark = indigo accent, matrix = phosphor green. `card_dim` collapses to the page bg in dark/matrix so disabled cards (Practice Missed when empty) recede instead of standing out brighter than active cards (the v0.7.13 bug where soft = #1e293b was *lighter* than card_bg = #0f172a).
+2. **Matrix theme** (`_MATRIX` palette + `matrix_mode` shop entry, 1000 pts). Pure black bg, near-black card surfaces, signature `#00ff41` matrix green for `ink` so digits in question displays glow automatically. Warn=amber, danger=red kept distinct so feedback still differentiates.
+3. **Theme picker in Settings → Appearance**. Replaces the v0.7.13 single Dark toggle. One row per theme — Light is free, Dark/Matrix gated on `purchases_store.has(<id>_mode)`. Owned rows show "Use" or "✓ Active"; locked rows show "🔒 Buy in Shop" shortcut. Selecting writes `settings('theme')` and rebuilds the menu under the modal.
+
+Lifetime-points bookkeeping: `AchievementsStore.spend()` bumps `stats.total_spent`. New `get_total_spent()` / `get_lifetime_earned()` queries (`= points + total_spent`). Trophy Room header surfaces a `X lifetime · Y spent` line below the balance once anything has been spent.
+
+Files touched in v0.7.13.1: `games/theme.py` (tokens + matrix palette + `theme_name()` / `available_themes()` helpers), `games/achievements_store.py` (`total_spent` default, spend bookkeeping, two new getters), `game.py` (theme picker block in Settings, MATRIX entry in `SHOP_ITEMS`, Trophy Room lifetime/spent block, Python-level `bg = "white"` assignments fixed in `_difficulty_tile` and Practice-Missed disabled state, button-bg swap from `T["ink"]` → `T["btn_primary_bg"]`), `games/base_game.py` (button-bg swap), `games/stats_screen.py` (Export PDF + Trophy header button-bg swap). py_compile clean. Headless smoke import: 3 themes registered (`light`/`dark`/`matrix`), 28 tokens each, 2 shop items, `total_spent` field default-zero on existing profiles.
+
+Earlier: **v0.7.13** (2026-05-01) — **Dark Mode** shipped as the first paid cosmetic (500 pts). The Shop tile is no longer a placeholder — clicking opens a modal that lists every entry in `SHOP_ITEMS` (currently one: `dark_mode`) with live Buy / Owned state, point cost, and balance display. Architecture pieces:
+
+1. **`games/purchases_store.py`** — per-profile JSON ledger at `<profile_dir>/purchases.json` with `has(id)` / `purchase(id)` / `all_owned()`. `purchase()` is idempotent. New profiles start empty.
+2. **`AchievementsStore.spend(points)`** — deducts from running total, returns False on insufficient balance. One-way; achievements aren't refunded.
+3. **`profile_manager.load_stores`** — returns a **5-tuple now**: `(achievements, missed, scores, sessions, purchases)`. All call-sites that previously bound a 4-tuple were updated.
+4. **`SHOP_ITEMS` registry in `game.py`** — list of dicts (id, name, category, icon, desc, price, optional `on_buy` callable). Adding a new item = one entry. `_show_shop` renders one card per item; balance updates in-place after a Buy.
+5. **Settings → Appearance** — owns-gated **Dark mode** toggle. When `purchases_store.has("dark_mode")`, writes `settings('theme')` as `"light"`/`"dark"` and rebuilds the menu under the modal so the change paints immediately. When not owned, the row shows a "🔒 Buy in Shop" shortcut that closes Settings and opens the Shop modal.
+6. **Theme rollout** — `theme()` reader in `games/theme.py` (already shipped v0.7.12) is now consumed by every menu/game/stats/practice/tutorials-panel render method via a `T = theme()` line at the top. Each file imports `from .theme import theme` and substitutes `bg=T["bg"]`, `fg=T["ink"]` etc. for the previously hardcoded slate-9xx scale. Brand/per-family accents stay literal (per-family glyph backgrounds, success/danger badge palettes, gold star) — they're designed to read on both themes.
+7. **Deliberately NOT themed yet** — `games/tutorials/slideshow_frame.py` and the in-game helper modal (`BaseGame._open_helper_modal`). Pedagogical canvas drawings depend on stable ink-on-white contrast; dark-themeing them is a v0.7.13.x follow-up. The user can leave dark mode off if the inconsistency bothers them.
+
+Files touched: new `games/purchases_store.py`; `games/profile_manager.py` (5-tuple + `purchases.json`); `games/achievements_store.py` (`spend()`); `game.py` (SHOP_ITEMS, themed shop modal + tile, themed Settings dark-mode row, full menu/profile/achievements migration); `games/base_game.py`; `games/stats_screen.py`; `games/practice_missed.py`; `games/tutorials/tutorials_panel.py`; all 12 per-game `games/{mult,div,frac,conv}_{basic,intermediate,advanced}.py`. py_compile clean across the board. Headless smoke import: `SHOP_ITEMS` resolves, `theme()` returns 26 tokens, `PurchasesStore` instantiates.
+
+Earlier: **v0.7.12.2** (2026-05-01) — patch over v0.7.12.1: (1) **Mouse-wheel guard.** With the auto-hiding scrollbar, the wheel still fired `yview_scroll` and scrolled the canvas into negative space when content fit. `_install_wheel_handler` now early-returns when `_scroll_target.yview()` reports `(first, last)` ≈ `(0, 1)` — uniform for `Canvas` and `Text`. (2) **minsize 960 → 1080.** Below 1080 px the 4 equal-weight family tiles squish past their labels and the rightmost tile starts clipping. Floor computed from 4 × ~235 px tile + 3 × 14 gap + 2 × 48 section padding ≈ 1078, rounded up. Default geometry 1120x800 retained.
+
+Earlier: **v0.7.12.1** (2026-05-01) — menu polish patch over v0.7.12. Default geometry 1080x720 → 1120x800 and minsize 920x560 → 960x600 so the compressed menu fits at default size without scrolling. The menu's vertical scrollbar is now **auto-hiding** — `show_menu` keeps `vsb` unpacked until a `_sync_scrollbar` helper detects content overflow on inner-frame or canvas `<Configure>`. Difficulty cards no longer stretch on maximised windows: `cards.rowconfigure(0, weight=1)` removed and `card.grid(sticky="nsew")` → `sticky="new"` so each card top-aligns and sizes to its content. Asset slot height bumped 140 → 160. Pure cosmetic patch — no behaviour or persistence changes.
+
+Earlier: **v0.7.12** (2026-05-01) — menu compression + foundation work for v0.8.0. Main menu collapses 12 game cards into **4 family tiles**; clicking a tile opens a new **difficulty-selection screen** with three cards (Beginner / Intermediate / Advanced) and a per-card asset slot. Tools row widened from 3 → 4 to host a **Shop** placeholder (locked, ships in v0.8.0). Game back-callback returns to the difficulty screen for the same family rather than the menu, so trying a sibling difficulty is one click.
 
 Architecture entry points (load-bearing for future expansion):
 1. **`game.GAMES`** — one record per family with `id` (e.g. `"mult"`), `label`, `tagline`, `glyph`, `accent`, `difficulties=[…]`. Adding a new family is a single append + three BaseGame subclasses. The previous flat `CATEGORIES` list is gone.

@@ -18,6 +18,7 @@ from tkinter import messagebox
 
 from .base_game    import BaseGame
 from .achievements import ACHIEVEMENTS_BY_ID
+from .theme import theme
 
 
 def _fmt(n):
@@ -61,27 +62,29 @@ class PracticeMissed(BaseGame):
     # ---------------------------------------------------- question area
 
     def _build_question_area(self, parent):
+        T = theme()
         self.remaining_label = tk.Label(
             parent, text="", font=("Helvetica", 10),
-            bg="white", fg="#64748b"
+            bg=T["card_bg"], fg=T["muted"]
         )
         self.remaining_label.pack(anchor="w", pady=(0, 6))
 
-        q_box = tk.Frame(parent, bg="white",
-                         highlightbackground="#e2e8f0", highlightthickness=1)
+        q_box = tk.Frame(parent, bg=T["card_bg"],
+                         highlightbackground=T["card_border"], highlightthickness=1)
         q_box.pack(fill=tk.X, pady=(0, 18))
-        inner = tk.Frame(q_box, bg="white", padx=24, pady=22)
+        inner = tk.Frame(q_box, bg=T["card_bg"], padx=24, pady=22)
         inner.pack(fill=tk.X)
         tk.Label(inner, text="CURRENT TASK",
-                 font=("Helvetica", 9), bg="white", fg="#94a3b8").pack()
+                 font=("Helvetica", 9), bg=T["card_bg"], fg=T["dim"]).pack()
         self.question_label = tk.Label(inner, text="",
                                         font=("Helvetica", 52, "bold"),
-                                        bg="white", fg="#0f172a")
+                                        bg=T["card_bg"], fg=T["ink"])
         self.question_label.pack(pady=(6, 0))
 
     def _add_extra_buttons(self, btn_row):
+        T = theme()
         self._btn(btn_row, "🗑  Wipe All", self._wipe_all,
-                  bg="white", fg="#b91c1c", border=True).pack(side=tk.LEFT, padx=(8, 0))
+                  bg=T["card_bg"], fg="#b91c1c", border=True).pack(side=tk.LEFT, padx=(8, 0))
 
     # ---------------------------------------------------------------- abstract
 

@@ -22,6 +22,7 @@ from tkinter import ttk, messagebox, filedialog
 from .achievements import (
     ACHIEVEMENTS, ACHIEVEMENTS_BY_ID, GAME_IDS, GAME_NAMES, GAME_SHORT,
 )
+from .theme import theme
 from . import pdf_export
 
 
@@ -57,36 +58,37 @@ class StatsScreen:
     # ================================================================ build
 
     def _build(self):
+        T = theme()
         # ── Top bar ──────────────────────────────────────────────────────
-        top = tk.Frame(self.parent, bg=BG, padx=24, pady=10)
+        top = tk.Frame(self.parent, bg=T["bg"], padx=24, pady=10)
         top.pack(fill=tk.X)
 
         tk.Button(top, text="← Menu",
-                  font=("Helvetica", 10), bg=BG, fg="#475569",
+                  font=("Helvetica", 10), bg=T["bg"], fg=T["muted"],
                   relief="flat", bd=0, cursor="hand2",
-                  activebackground=BG, activeforeground=INK,
+                  activebackground=T["bg"], activeforeground=T["ink"],
                   command=self.back_callback).pack(side=tk.LEFT)
 
         tk.Button(top, text="⬇  Export PDF",
                   font=("Helvetica", 10, "bold"),
-                  bg=INK, fg="white",
+                  bg=T["btn_primary_bg"], fg=T["btn_primary_fg"],
                   relief="flat", bd=0, padx=14, pady=6, cursor="hand2",
                   activebackground="#1e293b", activeforeground="white",
                   command=self._export_pdf).pack(side=tk.RIGHT)
 
         # ── Scrollable body ──────────────────────────────────────────────
-        outer = tk.Frame(self.parent, bg=BG)
+        outer = tk.Frame(self.parent, bg=T["bg"])
         outer.pack(fill=tk.BOTH, expand=True)
 
         vsb = ttk.Scrollbar(outer, orient="vertical")
         vsb.pack(side=tk.RIGHT, fill=tk.Y)
 
-        canvas = tk.Canvas(outer, bg=BG, highlightthickness=0,
+        canvas = tk.Canvas(outer, bg=T["bg"], highlightthickness=0,
                            yscrollcommand=vsb.set)
         canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         vsb.config(command=canvas.yview)
 
-        body = tk.Frame(canvas, bg=BG)
+        body = tk.Frame(canvas, bg=T["bg"])
         win_id = canvas.create_window((0, 0), window=body, anchor="nw")
         body.bind("<Configure>",
                   lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
@@ -102,13 +104,13 @@ class StatsScreen:
         canvas.bind_all("<MouseWheel>", _wheel)
 
         # ── Header ───────────────────────────────────────────────────────
-        hdr = tk.Frame(body, bg=BG, padx=48, pady=28)
+        hdr = tk.Frame(body, bg=T["bg"], padx=48, pady=28)
         hdr.pack(fill=tk.X)
         tk.Label(hdr, text="📊  Progress & Stats",
                  font=("Helvetica", 28, "bold"),
-                 bg=BG, fg=INK).pack(anchor="w")
+                 bg=T["bg"], fg=T["ink"]).pack(anchor="w")
         tk.Label(hdr, text=f"A summary of {self.profile_name}'s practice so far.",
-                 font=("Helvetica", 12), bg=BG, fg=MUTED).pack(anchor="w", pady=(4, 0))
+                 font=("Helvetica", 12), bg=T["bg"], fg=T["muted"]).pack(anchor="w", pady=(4, 0))
 
         # ── Sections ─────────────────────────────────────────────────────
         self._section_summary_tiles(body)
@@ -118,44 +120,47 @@ class StatsScreen:
         self._section_highlights(body)
 
         # ── Footer spacer ────────────────────────────────────────────────
-        tk.Frame(body, bg=BG, height=30).pack()
+        tk.Frame(body, bg=T["bg"], height=30).pack()
 
     # ================================================================ sections
 
     def _section_title(self, parent, text, sub=""):
-        wrap = tk.Frame(parent, bg=BG, padx=48)
+        T = theme()
+        wrap = tk.Frame(parent, bg=T["bg"], padx=48)
         wrap.pack(fill=tk.X, pady=(8, 8))
         tk.Label(wrap, text=text,
                  font=("Helvetica", 14, "bold"),
-                 bg=BG, fg=INK).pack(anchor="w")
+                 bg=T["bg"], fg=T["ink"]).pack(anchor="w")
         if sub:
             tk.Label(wrap, text=sub,
                      font=("Helvetica", 10),
-                     bg=BG, fg=MUTED).pack(anchor="w", pady=(2, 0))
+                     bg=T["bg"], fg=T["muted"]).pack(anchor="w", pady=(2, 0))
 
     def _card(self, parent, padx=48, pady=(0, 24)):
-        wrap = tk.Frame(parent, bg=BG, padx=padx)
+        T = theme()
+        wrap = tk.Frame(parent, bg=T["bg"], padx=padx)
         wrap.pack(fill=tk.X, pady=pady)
-        card = tk.Frame(wrap, bg="white",
-                        highlightbackground=CARD_BORDER, highlightthickness=1)
+        card = tk.Frame(wrap, bg=T["card_bg"],
+                        highlightbackground=T["card_border"], highlightthickness=1)
         card.pack(fill=tk.X)
-        inner = tk.Frame(card, bg="white", padx=22, pady=20)
+        inner = tk.Frame(card, bg=T["card_bg"], padx=22, pady=20)
         inner.pack(fill=tk.BOTH, expand=True)
         return inner
 
     # ---- 1. Summary tiles --------------------------------------------------
 
     def _section_summary_tiles(self, parent):
+        T = theme()
         stats = self._as.get_stats()
         total_correct     = stats.get("total_correct", 0)
         days_played       = len(stats.get("days_played", []))
         best_streak       = stats.get("best_streak_ever", 0)
         total_minutes     = self._sess.total_minutes() if self._sess else 0.0
 
-        wrap = tk.Frame(parent, bg=BG, padx=48)
+        wrap = tk.Frame(parent, bg=T["bg"], padx=48)
         wrap.pack(fill=tk.X, pady=(4, 20))
 
-        row = tk.Frame(wrap, bg=BG)
+        row = tk.Frame(wrap, bg=T["bg"])
         row.pack(fill=tk.X)
         for i in range(4):
             row.columnconfigure(i, weight=1)
@@ -168,21 +173,22 @@ class StatsScreen:
         ]
         for col, (label, value, icon) in enumerate(tiles):
             pad = (0, 12) if col < 3 else (0, 0)
-            tile = tk.Frame(row, bg="white",
-                            highlightbackground=CARD_BORDER, highlightthickness=1)
+            tile = tk.Frame(row, bg=T["card_bg"],
+                            highlightbackground=T["card_border"], highlightthickness=1)
             tile.grid(row=0, column=col, sticky="nsew", padx=pad)
-            inner = tk.Frame(tile, bg="white", padx=18, pady=16)
+            inner = tk.Frame(tile, bg=T["card_bg"], padx=18, pady=16)
             inner.pack(fill=tk.BOTH, expand=True)
             tk.Label(inner, text=f"{icon}  {label}",
                      font=("Helvetica", 10),
-                     bg="white", fg=MUTED).pack(anchor="w")
+                     bg=T["card_bg"], fg=T["muted"]).pack(anchor="w")
             tk.Label(inner, text=value,
                      font=("Helvetica", 24, "bold"),
-                     bg="white", fg=INK).pack(anchor="w", pady=(4, 0))
+                     bg=T["card_bg"], fg=T["ink"]).pack(anchor="w", pady=(4, 0))
 
     # ---- 2. 14-day bar chart ----------------------------------------------
 
     def _section_bar_chart(self, parent):
+        T = theme()
         self._section_title(parent,
                             "Questions per day",
                             "Last 14 days. Green bars show correct answers; the full height is total attempts.")
@@ -192,17 +198,18 @@ class StatsScreen:
 
         if not daily or all(a == 0 for _, _, a in daily):
             tk.Label(inner, text="No activity yet. Play a few sessions and this will light up.",
-                     font=("Helvetica", 10), bg="white", fg=DIM).pack(anchor="w")
+                     font=("Helvetica", 10), bg=T["card_bg"], fg=T["dim"]).pack(anchor="w")
             return
 
         w, h = 900, 220
-        canvas = tk.Canvas(inner, width=w, height=h, bg="white",
+        canvas = tk.Canvas(inner, width=w, height=h, bg=T["card_bg"],
                            highlightthickness=0)
         canvas.pack(fill=tk.X)
         self._draw_bar_chart(canvas, daily, w, h)
 
     def _draw_bar_chart(self, canvas, daily, w, h):
         """daily: list[(date_iso, correct, attempts)]"""
+        T = theme()
         n          = len(daily)
         margin_l   = 38
         margin_r   = 14
@@ -227,11 +234,11 @@ class StatsScreen:
         for i in range(5):
             y = margin_t + plot_h * (1 - i / 4)
             canvas.create_line(margin_l, y, margin_l + plot_w, y,
-                               fill=SOFT, width=1)
+                               fill=T["soft"], width=1)
             val = int(y_max * i / 4)
             canvas.create_text(margin_l - 6, y,
                                text=str(val), anchor="e",
-                               font=("Helvetica", 8), fill=DIM)
+                               font=("Helvetica", 8), fill=T["dim"])
 
         # Bars
         gap       = 6
@@ -250,7 +257,7 @@ class StatsScreen:
             if attempts > 0:
                 canvas.create_rectangle(x0, y_base - bar_h_total,
                                         x1, y_base,
-                                        fill=FAINT, outline="")
+                                        fill=T["faint"], outline="")
                 # correct portion (dark green)
                 canvas.create_rectangle(x0, y_base - bar_h_correct,
                                         x1, y_base,
@@ -259,7 +266,7 @@ class StatsScreen:
                 canvas.create_text((x0 + x1) / 2, y_base - bar_h_total - 8,
                                    text=str(attempts),
                                    font=("Helvetica", 8, "bold"),
-                                   fill=INK)
+                                   fill=T["ink"])
 
             # x-axis tick: day-of-month; also include month letter on day 1
             try:
@@ -274,7 +281,7 @@ class StatsScreen:
             canvas.create_text((x0 + x1) / 2, y_base + 12,
                                text=label,
                                font=("Helvetica", 8, "bold" if is_today else "normal"),
-                               fill=INK if is_today else MUTED)
+                               fill=T["ink"] if is_today else T["muted"])
 
             x += bar_w + gap
 
@@ -284,15 +291,16 @@ class StatsScreen:
         canvas.create_rectangle(lx, ly - 6, lx + 10, ly + 2,
                                 fill=BAR_GOOD, outline="")
         canvas.create_text(lx + 14, ly - 2, text="Correct", anchor="w",
-                           font=("Helvetica", 8), fill=MUTED)
+                           font=("Helvetica", 8), fill=T["muted"])
         canvas.create_rectangle(lx + 70, ly - 6, lx + 80, ly + 2,
-                                fill=FAINT, outline="")
+                                fill=T["faint"], outline="")
         canvas.create_text(lx + 84, ly - 2, text="Attempts", anchor="w",
-                           font=("Helvetica", 8), fill=MUTED)
+                           font=("Helvetica", 8), fill=T["muted"])
 
     # ---- 3. Accuracy trend per game ---------------------------------------
 
     def _section_accuracy_trends(self, parent):
+        T = theme()
         self._section_title(parent,
                             "Accuracy trend per game",
                             "Each sparkline shows the last sessions for that game mode — right-hand values are most recent.")
@@ -308,10 +316,10 @@ class StatsScreen:
 
         if not games_with_data:
             tk.Label(inner, text="No game sessions logged yet.",
-                     font=("Helvetica", 10), bg="white", fg=DIM).pack(anchor="w")
+                     font=("Helvetica", 10), bg=T["card_bg"], fg=T["dim"]).pack(anchor="w")
             return
 
-        grid = tk.Frame(inner, bg="white")
+        grid = tk.Frame(inner, bg=T["card_bg"])
         grid.pack(fill=tk.X)
         grid.columnconfigure(0, weight=1)
         grid.columnconfigure(1, weight=1)
@@ -323,28 +331,30 @@ class StatsScreen:
             self._spark_cell(grid, row, col, pad_r, gid, series)
 
     def _spark_cell(self, parent, row, col, pad_r, gid, series):
-        cell = tk.Frame(parent, bg="white")
+        T = theme()
+        cell = tk.Frame(parent, bg=T["card_bg"])
         cell.grid(row=row, column=col, sticky="nsew", padx=pad_r, pady=6)
 
         name = GAME_SHORT.get(gid, gid)
         latest = series[-1]
         avg    = round(sum(series) / len(series))
 
-        hdr = tk.Frame(cell, bg="white")
+        hdr = tk.Frame(cell, bg=T["card_bg"])
         hdr.pack(fill=tk.X)
         tk.Label(hdr, text=name,
                  font=("Helvetica", 10, "bold"),
-                 bg="white", fg=INK).pack(side=tk.LEFT)
+                 bg=T["card_bg"], fg=T["ink"]).pack(side=tk.LEFT)
         tk.Label(hdr, text=f"avg {avg}%   ·   latest {latest}%",
                  font=("Helvetica", 9),
-                 bg="white", fg=MUTED).pack(side=tk.RIGHT)
+                 bg=T["card_bg"], fg=T["muted"]).pack(side=tk.RIGHT)
 
-        spark = tk.Canvas(cell, width=320, height=54, bg="white",
+        spark = tk.Canvas(cell, width=320, height=54, bg=T["card_bg"],
                           highlightthickness=0)
         spark.pack(fill=tk.X, pady=(4, 2))
         self._draw_sparkline(spark, series, 320, 54)
 
     def _draw_sparkline(self, canvas, series, w, h):
+        T = theme()
         if not series:
             return
         pad = 4
@@ -358,7 +368,7 @@ class StatsScreen:
             return x, y
 
         # Reference lines: 50%, 80%
-        for ref, col in [(50, SOFT), (80, "#e0e7ff")]:
+        for ref, col in [(50, T["soft"]), (80, "#e0e7ff")]:
             _, y = _xy(0, ref)
             canvas.create_line(pad, y, pad + plot_w, y, fill=col, width=1)
 
@@ -372,17 +382,18 @@ class StatsScreen:
             poly.extend([pts[-1][0], pad + plot_h])
             canvas.create_polygon(*poly, fill="#eef2ff", outline="")
             for (x1, y1), (x2, y2) in zip(pts, pts[1:]):
-                canvas.create_line(x1, y1, x2, y2, fill=ACCENT, width=2)
+                canvas.create_line(x1, y1, x2, y2, fill=T["accent"], width=2)
 
         # Dots
         for i, v in enumerate(series):
             x, y = _xy(i, v)
             canvas.create_oval(x - 2, y - 2, x + 2, y + 2,
-                               fill=ACCENT, outline="white", width=1)
+                               fill=T["accent"], outline="white", width=1)
 
     # ---- 4. Per-game table ------------------------------------------------
 
     def _section_per_game_table(self, parent):
+        T = theme()
         self._section_title(parent,
                             "Per-game summary",
                             "Aggregated across all logged sessions.")
@@ -392,7 +403,7 @@ class StatsScreen:
 
         if not summary:
             tk.Label(inner, text="No sessions yet.",
-                     font=("Helvetica", 10), bg="white", fg=DIM).pack(anchor="w")
+                     font=("Helvetica", 10), bg=T["card_bg"], fg=T["dim"]).pack(anchor="w")
             return
 
         # Header
@@ -405,13 +416,13 @@ class StatsScreen:
             ("Best streak", "e",  10),
             ("Last played", "e",  12),
         ]
-        hdr = tk.Frame(inner, bg="white")
+        hdr = tk.Frame(inner, bg=T["card_bg"])
         hdr.pack(fill=tk.X, pady=(0, 4))
         for text, anchor, width in cols:
             tk.Label(hdr, text=text, anchor=anchor, width=width,
                      font=("Helvetica", 9, "bold"),
-                     bg="white", fg=DIM).pack(side=tk.LEFT)
-        tk.Frame(inner, bg=CARD_BORDER, height=1).pack(fill=tk.X, pady=(0, 4))
+                     bg=T["card_bg"], fg=T["dim"]).pack(side=tk.LEFT)
+        tk.Frame(inner, bg=T["card_border"], height=1).pack(fill=tk.X, pady=(0, 4))
 
         # Rows — in canonical game order
         shown = 0
@@ -420,7 +431,7 @@ class StatsScreen:
             if not row_data:
                 continue
             shown += 1
-            bg = "white" if shown % 2 == 1 else SOFT
+            bg = T["card_bg"] if shown % 2 == 1 else T["soft"]
             row = tk.Frame(inner, bg=bg)
             row.pack(fill=tk.X)
 
@@ -436,11 +447,12 @@ class StatsScreen:
             for val, anchor, width in values:
                 tk.Label(row, text=val, anchor=anchor, width=width,
                          font=("Helvetica", 10),
-                         bg=bg, fg=INK).pack(side=tk.LEFT, pady=4)
+                         bg=bg, fg=T["ink"]).pack(side=tk.LEFT, pady=4)
 
     # ---- 5. Highlights ----------------------------------------------------
 
     def _section_highlights(self, parent):
+        T = theme()
         self._section_title(parent,
                             "Highlights",
                             "Recent achievements and headline numbers.")
@@ -452,38 +464,38 @@ class StatsScreen:
         ach_total  = len(ACHIEVEMENTS)
 
         # Top line: points and achievement count
-        top = tk.Frame(inner, bg="white")
+        top = tk.Frame(inner, bg=T["card_bg"])
         top.pack(fill=tk.X, pady=(0, 10))
         tk.Label(top, text=f"⭐ {pts:,} pts",
                  font=("Helvetica", 16, "bold"),
-                 bg="white", fg="#f59e0b").pack(side=tk.LEFT)
+                 bg=T["card_bg"], fg="#f59e0b").pack(side=tk.LEFT)
         tk.Label(top, text=f"   {len(earned_ids)} / {ach_total} achievements earned",
                  font=("Helvetica", 11),
-                 bg="white", fg=MUTED).pack(side=tk.LEFT)
+                 bg=T["card_bg"], fg=T["muted"]).pack(side=tk.LEFT)
 
         # Latest 5 earned achievements (by order they appear in earned list)
         last_earned = list(earned_ids)[-5:][::-1]
         if not last_earned:
             tk.Label(inner, text="No achievements earned yet.",
-                     font=("Helvetica", 10), bg="white", fg=DIM).pack(anchor="w")
+                     font=("Helvetica", 10), bg=T["card_bg"], fg=T["dim"]).pack(anchor="w")
             return
 
         tk.Label(inner, text="Recently earned",
                  font=("Helvetica", 10, "bold"),
-                 bg="white", fg=MUTED).pack(anchor="w", pady=(6, 4))
+                 bg=T["card_bg"], fg=T["muted"]).pack(anchor="w", pady=(6, 4))
 
         for aid in last_earned:
             ach = ACHIEVEMENTS_BY_ID.get(aid)
             if not ach:
                 continue
-            line = tk.Frame(inner, bg=SOFT, padx=12, pady=6)
+            line = tk.Frame(inner, bg=T["soft"], padx=12, pady=6)
             line.pack(fill=tk.X, pady=2)
             tk.Label(line, text=f"{ach['icon']}  {ach['name']}",
                      font=("Helvetica", 11, "bold"),
-                     bg=SOFT, fg=INK).pack(side=tk.LEFT)
+                     bg=T["soft"], fg=T["ink"]).pack(side=tk.LEFT)
             tk.Label(line, text=f"+{ach['points']} pts",
                      font=("Helvetica", 9),
-                     bg=SOFT, fg=MUTED).pack(side=tk.RIGHT)
+                     bg=T["soft"], fg=T["muted"]).pack(side=tk.RIGHT)
 
     # ================================================================ helpers
 

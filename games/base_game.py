@@ -25,6 +25,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from .achievements import ACHIEVEMENTS, ACHIEVEMENTS_BY_ID
+from .theme import theme
 from .tutorials import TUTORIAL_REGISTRY
 
 
@@ -77,19 +78,20 @@ class BaseGame:
     # ================================================================ layout
 
     def _build_layout(self):
+        T = theme()
         # ── Top bar ──────────────────────────────────────────────────────────
-        top = tk.Frame(self.parent, bg="#f8fafc", padx=24, pady=10)
+        top = tk.Frame(self.parent, bg=T["bg"], padx=24, pady=10)
         top.pack(fill=tk.X)
 
         tk.Button(top, text="← Menu",
-                  font=("Helvetica", 10), bg="#f8fafc", fg="#475569",
+                  font=("Helvetica", 10), bg=T["bg"], fg=T["muted"],
                   relief="flat", bd=0, cursor="hand2",
                   activebackground="#f8fafc", activeforeground="#0f172a",
                   command=self._go_back).pack(side=tk.LEFT)
 
         if self.GAME_ID:
             tk.Button(top, text="🏆  Scores",
-                      font=("Helvetica", 10), bg="#f8fafc", fg="#475569",
+                      font=("Helvetica", 10), bg=T["bg"], fg=T["muted"],
                       relief="flat", bd=0, cursor="hand2",
                       activebackground="#f8fafc", activeforeground="#0f172a",
                       command=self._show_leaderboard).pack(side=tk.RIGHT)
@@ -101,57 +103,59 @@ class BaseGame:
         if self.GAME_ID and self.GAME_ID in TUTORIAL_REGISTRY:
             tk.Button(top, text="ⓘ  Help",
                       font=("Helvetica", 11, "bold"),
-                      bg="#f8fafc", fg="#4f46e5",
+                      bg=T["bg"], fg="#4f46e5",
                       relief="flat", bd=0, cursor="hand2",
                       activebackground="#f8fafc", activeforeground="#4338ca",
                       command=self._open_helper_modal).pack(side=tk.RIGHT,
                                                             padx=(0, 14))
 
         # ── Two-column body ───────────────────────────────────────────────────
-        main = tk.Frame(self.parent, bg="#f8fafc", padx=24, pady=4)
+        main = tk.Frame(self.parent, bg=T["bg"], padx=24, pady=4)
         main.pack(fill=tk.BOTH, expand=True)
 
         # RIGHT must be packed first so it reserves its fixed width before
         # the expanding left panel consumes all available space.
-        right = tk.Frame(main, bg="#f8fafc", width=370)
+        right = tk.Frame(main, bg=T["bg"], width=370)
         right.pack(side=tk.RIGHT, fill=tk.Y)
         right.pack_propagate(False)
 
-        left = tk.Frame(main, bg="#f8fafc")
+        left = tk.Frame(main, bg=T["bg"])
         left.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 14))
 
         self._build_left(left)
         self._build_right(right)
 
     def _card(self, parent):
-        return tk.Frame(parent, bg="white",
-                        highlightbackground="#e2e8f0", highlightthickness=1)
+        T = theme()
+        return tk.Frame(parent, bg=T["card_bg"],
+                        highlightbackground=T["card_border"], highlightthickness=1)
 
     def _build_left(self, parent):
+        T = theme()
         card = self._card(parent)
         card.pack(fill=tk.BOTH, expand=True)
 
-        hdr = tk.Frame(card, bg="white", padx=24, pady=18)
+        hdr = tk.Frame(card, bg=T["card_bg"], padx=24, pady=18)
         hdr.pack(fill=tk.X)
         tk.Label(hdr, text=self.TITLE,
                  font=("Helvetica", 20, "bold"),
-                 bg="white", fg="#0f172a").pack(anchor="w")
+                 bg=T["card_bg"], fg=T["ink"]).pack(anchor="w")
         if self.SUBTITLE:
             tk.Label(hdr, text=self.SUBTITLE,
-                     font=("Helvetica", 11), bg="white", fg="#475569").pack(anchor="w", pady=(3, 0))
+                     font=("Helvetica", 11), bg=T["card_bg"], fg=T["muted"]).pack(anchor="w", pady=(3, 0))
 
-        tk.Frame(card, bg="#e2e8f0", height=1).pack(fill=tk.X)
+        tk.Frame(card, bg=T["card_border"], height=1).pack(fill=tk.X)
 
-        body = tk.Frame(card, bg="white", padx=24, pady=14)
+        body = tk.Frame(card, bg=T["card_bg"], padx=24, pady=14)
         body.pack(fill=tk.BOTH, expand=True)
 
         # ── TOP: question area — expands to fill available vertical space ──────
-        q_area = tk.Frame(body, bg="white")
+        q_area = tk.Frame(body, bg=T["card_bg"])
         q_area.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
         self._build_question_area(q_area)
 
         # ── BOTTOM: controls — compact, fixed at the bottom of the card ────────
-        ctrl = tk.Frame(body, bg="white")
+        ctrl = tk.Frame(body, bg=T["card_bg"])
         ctrl.pack(fill=tk.X)
 
         # Answer entry
@@ -159,41 +163,41 @@ class BaseGame:
         self.answer_var.trace("w", self._validate_input)
         self.answer_entry = tk.Entry(ctrl, textvariable=self.answer_var,
                                      font=("Helvetica", 22), justify="center",
-                                     relief="solid", bd=1, fg="#0f172a",
+                                     relief="solid", bd=1, fg=T["ink"],
                                      highlightthickness=0)
         self.answer_entry.pack(fill=tk.X, ipady=10, pady=(0, 10))
         self.answer_entry.bind("<Return>", self.handle_submit)
         self.answer_entry.focus_set()
 
         # Buttons
-        btn_row = tk.Frame(ctrl, bg="white")
+        btn_row = tk.Frame(ctrl, bg=T["card_bg"])
         btn_row.pack(fill=tk.X, pady=(0, 8))
         self._btn(btn_row, "Check Answer", self.handle_submit,
-                  bg="#0f172a", fg="white").pack(side=tk.LEFT, padx=(0, 8))
+                  bg=T["btn_primary_bg"], fg=T["btn_primary_fg"]).pack(side=tk.LEFT, padx=(0, 8))
         self._btn(btn_row, "Skip", self.skip_question,
-                  bg="white", fg="#0f172a", border=True).pack(side=tk.LEFT, padx=(0, 8))
+                  bg=T["card_bg"], fg=T["ink"], border=True).pack(side=tk.LEFT, padx=(0, 8))
         self._btn(btn_row, "↺  Reset", self.reset_stats,
-                  bg="white", fg="#0f172a", border=True).pack(side=tk.LEFT)
+                  bg=T["card_bg"], fg=T["ink"], border=True).pack(side=tk.LEFT)
         self._add_extra_buttons(btn_row)
 
         # Feedback strip
-        self.feedback_frame = tk.Frame(ctrl, bg="white")
+        self.feedback_frame = tk.Frame(ctrl, bg=T["card_bg"])
         self.feedback_frame.pack(fill=tk.X)
         self.feedback_label = tk.Label(self.feedback_frame, text="",
                                         font=("Helvetica", 12, "bold"),
-                                        bg="white", fg="white",
+                                        bg=T["card_bg"], fg="white",
                                         anchor="w", padx=14, pady=6)
         self.feedback_label.pack(fill=tk.X)
 
         # Scratch pad
-        tk.Frame(ctrl, bg="#e2e8f0", height=1).pack(fill=tk.X, pady=(6, 0))
-        scratch_hdr = tk.Frame(ctrl, bg="white")
+        tk.Frame(ctrl, bg=T["card_border"], height=1).pack(fill=tk.X, pady=(6, 0))
+        scratch_hdr = tk.Frame(ctrl, bg=T["card_bg"])
         scratch_hdr.pack(fill=tk.X, pady=(5, 3))
         tk.Label(scratch_hdr, text="✏  Scratch pad",
                  font=("Helvetica", 10, "bold"),
-                 bg="white", fg="#64748b").pack(side=tk.LEFT)
+                 bg=T["card_bg"], fg=T["muted"]).pack(side=tk.LEFT)
         tk.Button(scratch_hdr, text="Clear",
-                  font=("Helvetica", 8), bg="white", fg="#94a3b8",
+                  font=("Helvetica", 8), bg=T["card_bg"], fg=T["dim"],
                   relief="flat", bd=0, cursor="hand2",
                   activebackground="white", activeforeground="#475569",
                   command=lambda: self._scratch.delete("1.0", tk.END)).pack(side=tk.RIGHT)
@@ -208,19 +212,20 @@ class BaseGame:
         self._scratch.pack(fill=tk.X, pady=(0, 4))
 
     def _build_right(self, parent):
+        T = theme()
         card = self._card(parent)
         card.pack(fill=tk.BOTH, expand=True)
 
-        hdr = tk.Frame(card, bg="white", padx=20, pady=16)
+        hdr = tk.Frame(card, bg=T["card_bg"], padx=20, pady=16)
         hdr.pack(fill=tk.X)
         tk.Label(hdr, text="Stats", font=("Helvetica", 18, "bold"),
-                 bg="white", fg="#0f172a").pack(anchor="w")
-        tk.Frame(card, bg="#e2e8f0", height=1).pack(fill=tk.X)
+                 bg=T["card_bg"], fg=T["ink"]).pack(anchor="w")
+        tk.Frame(card, bg=T["card_border"], height=1).pack(fill=tk.X)
 
-        body = tk.Frame(card, bg="white", padx=20, pady=16)
+        body = tk.Frame(card, bg=T["card_bg"], padx=20, pady=16)
         body.pack(fill=tk.BOTH, expand=True)
 
-        grid = tk.Frame(body, bg="white")
+        grid = tk.Frame(body, bg=T["card_bg"])
         grid.pack(fill=tk.X, pady=(0, 16))
         grid.columnconfigure(0, weight=1)
         grid.columnconfigure(1, weight=1)
@@ -231,20 +236,21 @@ class BaseGame:
         self.lbl_accuracy = self._stat_box(grid, "Accuracy", "0%", 1, 1)
 
         tk.Label(body, text="Accuracy progress",
-                 font=("Helvetica", 10), bg="white", fg="#475569").pack(anchor="w", pady=(0, 5))
+                 font=("Helvetica", 10), bg=T["card_bg"], fg=T["muted"]).pack(anchor="w", pady=(0, 5))
         self.progress_var = tk.DoubleVar(value=0)
         ttk.Progressbar(body, variable=self.progress_var, maximum=100,
                         mode="determinate",
                         style="Custom.Horizontal.TProgressbar").pack(fill=tk.X, pady=(0, 16))
 
         tk.Label(body, text="Recent attempts",
-                 font=("Helvetica", 11, "bold"), bg="white", fg="#334155").pack(anchor="w", pady=(0, 8))
-        self.history_frame = tk.Frame(body, bg="white")
+                 font=("Helvetica", 11, "bold"), bg=T["card_bg"], fg="#334155").pack(anchor="w", pady=(0, 8))
+        self.history_frame = tk.Frame(body, bg=T["card_bg"])
         self.history_frame.pack(fill=tk.BOTH, expand=True)
 
     # ================================================================ helpers
 
     def _btn(self, parent, text, command, bg, fg, border=False):
+        T = theme()
         return tk.Button(parent, text=text, command=command,
                          font=("Helvetica", 11, "bold" if not border else "normal"),
                          bg=bg, fg=fg,
@@ -253,12 +259,13 @@ class BaseGame:
                          activebackground=bg, activeforeground=fg)
 
     def _stat_box(self, parent, label, value, row, col):
-        f = tk.Frame(parent, bg="#f8fafc", padx=8, pady=10)
+        T = theme()
+        f = tk.Frame(parent, bg=T["bg"], padx=8, pady=10)
         f.grid(row=row, column=col, padx=3, pady=3, sticky="nsew")
         tk.Label(f, text=label, font=("Helvetica", 9),
-                 bg="#f8fafc", fg="#64748b").pack(anchor="w")
+                 bg=T["bg"], fg=T["muted"]).pack(anchor="w")
         val = tk.Label(f, text=value, font=("Helvetica", 20, "bold"),
-                       bg="#f8fafc", fg="#0f172a")
+                       bg=T["bg"], fg=T["ink"])
         val.pack(anchor="w")
         return val
 
@@ -279,28 +286,31 @@ class BaseGame:
         self._refresh_history()
 
     def _refresh_history(self):
+        T = theme()
         for w in self.history_frame.winfo_children():
             w.destroy()
         if not self.history:
             tk.Label(self.history_frame, text="No attempts yet.",
-                     font=("Helvetica", 10), bg="#f8fafc", fg="#94a3b8",
+                     font=("Helvetica", 10), bg=T["bg"], fg=T["dim"],
                      padx=12, pady=10, anchor="w").pack(fill=tk.X)
         else:
             for item in self.history:
-                bg = "#f0fdf4" if item["ok"] else "#fef2f2"
-                fg = "#15803d" if item["ok"] else "#b91c1c"
+                bg = T["good_bg"] if item["ok"] else T["danger_bg"]
+                fg = T["good"]    if item["ok"] else T["danger"]
                 tk.Label(self.history_frame, text=item["text"],
                          font=("Helvetica", 10), bg=bg, fg=fg,
                          padx=12, pady=7, anchor="w").pack(fill=tk.X, pady=2)
 
     def show_feedback(self, kind, text):
-        bg, fg = ("#f0fdf4", "#15803d") if kind == "correct" else ("#fef2f2", "#b91c1c")
+        T = theme()
+        bg, fg = (T["good_bg"], T["good"]) if kind == "correct" else (T["danger_bg"], T["danger"])
         self.feedback_frame.configure(bg=bg)
         self.feedback_label.configure(text=text, bg=bg, fg=fg)
 
     def clear_feedback(self):
-        self.feedback_frame.configure(bg="white")
-        self.feedback_label.configure(text="", bg="white")
+        T = theme()
+        self.feedback_frame.configure(bg=T["card_bg"])
+        self.feedback_label.configure(text="", bg=T["card_bg"])
 
     # ================================================================ input
 
@@ -433,6 +443,7 @@ class BaseGame:
           * Can still earn Helper Discovered (>=1 use) and Helper Master
             (>=10 lifetime uses).
         """
+        T = theme()
         if self._helper_modal is not None:
             try:
                 self._helper_modal.lift()
@@ -474,7 +485,7 @@ class BaseGame:
         win.title("Help")
         win.transient(root)
         win.grab_set()
-        win.configure(bg="#f8fafc")
+        win.configure(bg=T["bg"])
 
         # Size to comfortably hold the SlideshowFrame's 720×340 canvas
         # plus its surrounding card / nav. Mirrors the floor used by
@@ -487,7 +498,7 @@ class BaseGame:
         except Exception:
             win.geometry(f"{w}x{h}")
 
-        host = tk.Frame(win, bg="#f8fafc")
+        host = tk.Frame(win, bg=T["bg"])
         host.pack(fill=tk.BOTH, expand=True)
 
         self._helper_modal = win
@@ -674,6 +685,7 @@ class BaseGame:
 
     def _show_achievement_popup(self, ach, slot=0):
         """Display a non-blocking toast popup for an earned achievement."""
+        T = theme()
         try:
             root = self.parent.winfo_toplevel()
             root.update_idletasks()
@@ -701,7 +713,7 @@ class BaseGame:
                      bg="#1e293b", fg="white").pack(anchor="w")
             tk.Label(f, text=f"  +{ach['points']} points",
                      font=("Helvetica", 9),
-                     bg="#1e293b", fg="#94a3b8").pack(anchor="w")
+                     bg="#1e293b", fg=T["dim"]).pack(anchor="w")
 
             popup.after(3500, popup.destroy)
         except Exception:
@@ -717,6 +729,7 @@ class BaseGame:
 
     def _prompt_score_entry(self):
         """Show name-entry dialog if the session qualifies for top-10."""
+        T = theme()
         accuracy = round((self.correct / self.attempts) * 100) if self.attempts else 0
         if not self._ss.qualifies(self.GAME_ID, self.correct, accuracy, self.streak):
             self.back_callback()
@@ -732,18 +745,18 @@ class BaseGame:
         dlg.resizable(False, False)
         dlg.grab_set()
         dlg.geometry(f"420x210+{cx - 210}+{cy - 105}")
-        dlg.configure(bg="white")
+        dlg.configure(bg=T["card_bg"])
 
-        f = tk.Frame(dlg, bg="white", padx=28, pady=24)
+        f = tk.Frame(dlg, bg=T["card_bg"], padx=28, pady=24)
         f.pack(fill=tk.BOTH, expand=True)
 
         tk.Label(f, text="You made the leaderboard! 🎉",
-                 font=("Helvetica", 14, "bold"), bg="white", fg="#0f172a").pack(anchor="w")
+                 font=("Helvetica", 14, "bold"), bg=T["card_bg"], fg=T["ink"]).pack(anchor="w")
         tk.Label(f, text=f"{self.correct} correct  ·  {accuracy}% accuracy  ·  streak {self.streak}",
-                 font=("Helvetica", 10), bg="white", fg="#64748b").pack(anchor="w", pady=(4, 16))
+                 font=("Helvetica", 10), bg=T["card_bg"], fg=T["muted"]).pack(anchor="w", pady=(4, 16))
 
         tk.Label(f, text="Your name:", font=("Helvetica", 10, "bold"),
-                 bg="white", fg="#0f172a").pack(anchor="w")
+                 bg=T["card_bg"], fg=T["ink"]).pack(anchor="w")
         name_var = tk.StringVar()
         name_entry = tk.Entry(f, textvariable=name_var, font=("Helvetica", 13),
                               relief="solid", bd=1)
@@ -785,18 +798,19 @@ class BaseGame:
 
         name_entry.bind("<Return>", _save)
 
-        btn_row = tk.Frame(f, bg="white")
+        btn_row = tk.Frame(f, bg=T["card_bg"])
         btn_row.pack(anchor="e")
         tk.Button(btn_row, text="Save", command=_save,
-                  font=("Helvetica", 11, "bold"), bg="#0f172a", fg="white",
+                  font=("Helvetica", 11, "bold"), bg=T["btn_primary_bg"], fg=T["btn_primary_fg"],
                   relief="flat", padx=16, pady=6, cursor="hand2",
                   activebackground="#1e293b", activeforeground="white").pack(side=tk.LEFT, padx=(0, 8))
         tk.Button(btn_row, text="Skip", command=_skip,
-                  font=("Helvetica", 11), bg="white", fg="#475569",
+                  font=("Helvetica", 11), bg=T["card_bg"], fg=T["muted"],
                   relief="solid", bd=1, padx=16, pady=6, cursor="hand2").pack(side=tk.LEFT)
 
     def _show_leaderboard(self):
         """Display a top-10 table in a popup window."""
+        T = theme()
         scores = self._ss.get_scores(self.GAME_ID)
 
         root = self.parent.winfo_toplevel()
@@ -807,33 +821,41 @@ class BaseGame:
         win = tk.Toplevel(self.parent)
         win.title("Leaderboard")
         win.grab_set()
-        win.configure(bg="#f8fafc")
+        win.configure(bg=T["bg"])
         win.geometry(f"560x420+{cx - 280}+{cy - 210}")
         win.resizable(False, False)
 
-        hdr = tk.Frame(win, bg="#0f172a", padx=20, pady=14)
+        hdr = tk.Frame(win, bg=T["btn_primary_bg"], padx=20, pady=14)
         hdr.pack(fill=tk.X)
         tk.Label(hdr, text=f"🏆  {self.TITLE}",
-                 font=("Helvetica", 13, "bold"), bg="#0f172a", fg="white").pack(anchor="w")
+                 font=("Helvetica", 13, "bold"), bg=T["btn_primary_bg"], fg=T["btn_primary_fg"]).pack(anchor="w")
 
         if not scores:
             tk.Label(win, text="No scores yet — play to set the first record!",
-                     font=("Helvetica", 12), bg="#f8fafc", fg="#64748b").pack(expand=True)
+                     font=("Helvetica", 12), bg=T["bg"], fg=T["muted"]).pack(expand=True)
         else:
-            col_frame = tk.Frame(win, bg="#e2e8f0", padx=16, pady=6)
+            col_frame = tk.Frame(win, bg=T["card_border"], padx=16, pady=6)
             col_frame.pack(fill=tk.X)
             for text, width in [("#", 4), ("Name", 18), ("Correct", 9),
                                  ("Accuracy", 10), ("Streak", 8), ("Date", 12)]:
                 tk.Label(col_frame, text=text, width=width, anchor="w",
                          font=("Helvetica", 9, "bold"),
-                         bg="#e2e8f0", fg="#64748b").pack(side=tk.LEFT)
+                         bg=T["card_border"], fg=T["muted"]).pack(side=tk.LEFT)
 
-            rows = tk.Frame(win, bg="white")
+            rows = tk.Frame(win, bg=T["card_bg"])
             rows.pack(fill=tk.BOTH, expand=True)
 
             medals = ["🥇", "🥈", "🥉"] + [f" {i}" for i in range(4, 11)]
             for i, s in enumerate(scores):
-                bg = "#fffbeb" if i == 0 else ("white" if i % 2 == 0 else "#f8fafc")
+                # Top spot gets the highlight surface; the rest alternate
+                # between card_bg and soft so dark/matrix themes aren't
+                # rendered as black/light-grey zebra stripes.
+                if i == 0:
+                    bg = T["highlight_bg"]
+                elif i % 2 == 0:
+                    bg = T["card_bg"]
+                else:
+                    bg = T["soft"]
                 row = tk.Frame(rows, bg=bg, padx=16, pady=7)
                 row.pack(fill=tk.X)
                 for val, width in [
@@ -845,14 +867,13 @@ class BaseGame:
                     (s.get("date", ""),      12),
                 ]:
                     tk.Label(row, text=val, width=width, anchor="w",
-                             font=("Helvetica", 10), bg=bg, fg="#0f172a").pack(side=tk.LEFT)
+                             font=("Helvetica", 10), bg=bg, fg=T["ink"]).pack(side=tk.LEFT)
 
         tk.Button(win, text="Close", command=win.destroy,
-                  font=("Helvetica", 11), bg="white", fg="#475569",
+                  font=("Helvetica", 11), bg=T["card_bg"], fg=T["muted"],
                   relief="solid", bd=1, padx=20, pady=6, cursor="hand2").pack(pady=12)
 
     # ================================================= abstract — must override
-
     def new_question(self):             raise NotImplementedError
     def get_expected(self):             raise NotImplementedError
     def update_question_display(self):  raise NotImplementedError

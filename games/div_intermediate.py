@@ -15,6 +15,7 @@ import tkinter as tk
 import random
 
 from .base_game import BaseGame
+from .theme import theme
 
 
 class DivisionIntermediate(BaseGame):
@@ -23,16 +24,17 @@ class DivisionIntermediate(BaseGame):
     GAME_ID  = "div_intermediate"
 
     def _build_question_area(self, parent):
-        q_box = tk.Frame(parent, bg="white",
-                         highlightbackground="#e2e8f0", highlightthickness=1)
+        T = theme()
+        q_box = tk.Frame(parent, bg=T["card_bg"],
+                         highlightbackground=T["card_border"], highlightthickness=1)
         q_box.pack(fill=tk.BOTH, expand=True)
-        inner = tk.Frame(q_box, bg="white", padx=24, pady=22)
+        inner = tk.Frame(q_box, bg=T["card_bg"], padx=24, pady=22)
         inner.pack(fill=tk.BOTH, expand=True)
         tk.Label(inner, text="CURRENT TASK",
-                 font=("Helvetica", 9), bg="white", fg="#94a3b8").pack()
+                 font=("Helvetica", 9), bg=T["card_bg"], fg=T["dim"]).pack()
         self.question_label = tk.Label(inner, text="",
                                         font=("Helvetica", 52, "bold"),
-                                        bg="white", fg="#0f172a")
+                                        bg=T["card_bg"], fg=T["ink"])
         self.question_label.pack(pady=(6, 0))
 
     # ---------------------------------------------------------------- abstract

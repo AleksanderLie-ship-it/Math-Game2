@@ -9,6 +9,7 @@ Profiles are stored under:
     scores.json
     missed.json
     sessions.json
+    purchases.json   (added v0.7.13)
 
 A profile registry at:
   %APPDATA%\MathPractice\profiles.json
@@ -25,9 +26,10 @@ from .achievements_store import AchievementsStore
 from .missed_store       import MissedStore
 from .scores_store       import ScoresStore
 from .sessions_store     import SessionsStore
+from .purchases_store    import PurchasesStore
 
 
-# ── Base path ─────────────────────────────────────────────────────────────────
+# Base path
 
 def _base() -> pathlib.Path:
     appdata = os.getenv("APPDATA")
@@ -47,7 +49,7 @@ def _safe_name(name: str) -> str:
     return cleaned or "Profile"
 
 
-# ── Registry I/O ──────────────────────────────────────────────────────────────
+# Registry I/O
 
 def _load_registry() -> dict:
     try:
@@ -64,7 +66,7 @@ def _save_registry(reg: dict):
     p.write_text(json.dumps(reg, indent=2, ensure_ascii=False), encoding="utf-8")
 
 
-# ── Public API ────────────────────────────────────────────────────────────────
+# Public API
 
 def list_profiles() -> list[str]:
     """Return list of profile names in creation order."""
@@ -86,7 +88,6 @@ def create_profile(name: str) -> bool:
     reg["profiles"].append(name)
     reg["last"] = name
     _save_registry(reg)
-    # Initialise the directory (stores create their files on first save)
     _profile_dir(name).mkdir(parents=True, exist_ok=True)
     return True
 
@@ -112,10 +113,14 @@ def set_last_profile(name: str):
     _save_registry(reg)
 
 
-# ── Store factory ─────────────────────────────────────────────────────────────
+# Store factory
 
-def load_stores(name: str) -> tuple[AchievementsStore, MissedStore, ScoresStore, SessionsStore]:
-    """Instantiate all four stores for the given profile."""
+def load_stores(name: str):
+    """Instantiate all five stores for the given profile.
+
+    PurchasesStore added v0.7.13. The return tuple is
+    (achievements, missed, scores, sessions, purchases).
+    """
     d = _profile_dir(name)
     d.mkdir(parents=True, exist_ok=True)
     set_last_profile(name)
@@ -124,4 +129,5 @@ def load_stores(name: str) -> tuple[AchievementsStore, MissedStore, ScoresStore,
         MissedStore(d),
         ScoresStore(d),
         SessionsStore(d),
+        PurchasesStore(d),
     )

@@ -65,25 +65,26 @@ class ConvIntermediate(FractionBase):
     # ──────────────────────────────────────────── question area layout ─────────
 
     def _build_question_area(self, parent):
-        q_box = tk.Frame(parent, bg="white",
-                         highlightbackground="#e2e8f0", highlightthickness=1)
+        T = theme()
+        q_box = tk.Frame(parent, bg=T["card_bg"],
+                         highlightbackground=T["card_border"], highlightthickness=1)
         q_box.pack(fill=tk.BOTH, expand=True)
-        inner = tk.Frame(q_box, bg="white", padx=24, pady=18)
+        inner = tk.Frame(q_box, bg=T["card_bg"], padx=24, pady=18)
         inner.pack(fill=tk.BOTH, expand=True)
 
         self.prompt_label = tk.Label(inner, text="",
                                      font=("Helvetica", 11),
-                                     bg="white", fg="#64748b")
+                                     bg=T["card_bg"], fg=T["muted"])
         self.prompt_label.pack(anchor="w")
 
         self.question_label = tk.Label(inner, text="",
                                        font=("Helvetica", 52, "bold"),
-                                       bg="white", fg="#0f172a")
+                                       bg=T["card_bg"], fg=T["ink"])
         self.question_label.pack(pady=(8, 4))
 
         self.hint_label = tk.Label(inner, text="",
                                    font=("Helvetica", 9),
-                                   bg="white", fg="#94a3b8")
+                                   bg=T["card_bg"], fg=T["dim"])
         self.hint_label.pack(anchor="e")
 
     # ──────────────────────────────────────────────────── logic ───────────────
