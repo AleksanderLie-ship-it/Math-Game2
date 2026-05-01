@@ -325,6 +325,22 @@ def _build_achievements():
              desc="Read three different tutorials.",
              points=100, hidden=False, category="Learning", when="tutorial",
              check=lambda s, c: len(s.get("tutorials_viewed", [])) >= 3),
+
+        # Helper (i)-button milestones (added v0.7.11). when="helper" runs
+        # only on a helper-used session — it never fires from the normal
+        # end-of-session sweep, and helper-used sessions skip the normal
+        # game-mastery checks entirely. Reason: opening the in-game guide
+        # mid-question is allowed, but it must not award points or unlock
+        # mastery achievements. These two are the only carrots.
+        dict(id="helper_discovered",   name="Helper Discovered", icon="🆘",
+             desc="Use the in-game (i) helper for the first time.",
+             points=10,  hidden=False, category="Learning", when="helper",
+             check=lambda s, c: s.get("helper_used_total", 0) >= 1),
+
+        dict(id="helper_master",       name="Helper Master",     icon="🧭",
+             desc="Use the in-game (i) helper 10 times in total.",
+             points=50,  hidden=False, category="Learning", when="helper",
+             check=lambda s, c: s.get("helper_used_total", 0) >= 10),
     ]
 
     # ── Hidden / secrets ───────────────────────────────────────────────────────

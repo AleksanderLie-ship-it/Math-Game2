@@ -24,20 +24,47 @@ from .frac_base import FractionBase, _fmt_frac
 
 
 # (fraction, decimal_str, percentage_int)
+#
+# Pool covers /2, /4, /5, /8, /10 (the "clean" Beginner+Intermediate set)
+# AND /20, /25 (added v0.7.10.2 — strictly harder, still terminating, all
+# integer percentages). Denominators that don't divide 100 are excluded
+# on principle: /16 → 6.25 %, /40 → 2.5 %, /125 → 0.8 % all break the
+# integer-percentage contract the game ships with.
 _POOL = [
-    (Fraction(1, 2),  "0.5",   50),
-    (Fraction(1, 4),  "0.25",  25),
-    (Fraction(3, 4),  "0.75",  75),
-    (Fraction(1, 5),  "0.2",   20),
-    (Fraction(2, 5),  "0.4",   40),
-    (Fraction(3, 5),  "0.6",   60),
-    (Fraction(4, 5),  "0.8",   80),
-    (Fraction(1, 8),  "0.125", 13),   # 12.5% → accepted as 13 via tolerance
-    (Fraction(3, 8),  "0.375", 38),
-    (Fraction(1, 10), "0.1",   10),
-    (Fraction(3, 10), "0.3",   30),
-    (Fraction(7, 10), "0.7",   70),
-    (Fraction(9, 10), "0.9",   90),
+    # /2, /4, /5, /8, /10 — same as conv_basic / conv_intermediate
+    (Fraction(1, 2),   "0.5",    50),
+    (Fraction(1, 4),   "0.25",   25),
+    (Fraction(3, 4),   "0.75",   75),
+    (Fraction(1, 5),   "0.2",    20),
+    (Fraction(2, 5),   "0.4",    40),
+    (Fraction(3, 5),   "0.6",    60),
+    (Fraction(4, 5),   "0.8",    80),
+    (Fraction(1, 8),   "0.125",  13),  # 12.5% → accepted as 13 via tolerance
+    (Fraction(3, 8),   "0.375",  38),
+    (Fraction(1, 10),  "0.1",    10),
+    (Fraction(3, 10),  "0.3",    30),
+    (Fraction(7, 10),  "0.7",    70),
+    (Fraction(9, 10),  "0.9",    90),
+    # /20 — new for Advanced. Pupil multiplies by 5 to reach 100.
+    (Fraction(1, 20),  "0.05",    5),
+    (Fraction(3, 20),  "0.15",   15),
+    (Fraction(7, 20),  "0.35",   35),
+    (Fraction(9, 20),  "0.45",   45),
+    (Fraction(11, 20), "0.55",   55),
+    (Fraction(13, 20), "0.65",   65),
+    (Fraction(17, 20), "0.85",   85),
+    (Fraction(19, 20), "0.95",   95),
+    # /25 — new for Advanced. Pupil multiplies by 4 to reach 100.
+    (Fraction(1, 25),  "0.04",    4),
+    (Fraction(3, 25),  "0.12",   12),
+    (Fraction(7, 25),  "0.28",   28),
+    (Fraction(9, 25),  "0.36",   36),
+    (Fraction(11, 25), "0.44",   44),
+    (Fraction(13, 25), "0.52",   52),
+    (Fraction(17, 25), "0.68",   68),
+    (Fraction(19, 25), "0.76",   76),
+    (Fraction(21, 25), "0.84",   84),
+    (Fraction(23, 25), "0.92",   92),
 ]
 
 _DIRECTIONS = [

@@ -1,6 +1,6 @@
 @echo off
 title Build - Math Practice Game
-set VERSION=0.7.7
+set VERSION=0.7.10.2
 echo.
 echo ============================================
 echo   Building Math Practice v%VERSION%

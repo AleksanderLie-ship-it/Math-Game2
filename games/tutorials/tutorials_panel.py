@@ -233,10 +233,26 @@ class TutorialsPanel:
                  font=("Helvetica", 9), bg=SOFT, fg=DIM,
                  justify="left", wraplength=260).pack(anchor="w")
 
+    # Per-gid explanation for the "No guide needed" placeholder card.
+    # Keep each entry honest about WHY the mode skips a tutorial — recall-
+    # speed drill (mult_basic) reads very different from review-and-mix
+    # (conv_advanced), and a generic "just play" message would obscure
+    # the distinction for the pupil.
+    _NO_GUIDE_REASONS = {
+        "mult_basic": ("This mode is about recall speed, "
+                       "so there's nothing to walk through. Just play."),
+        "conv_advanced": ("All three forms — fraction, decimal, percentage "
+                          "— are the same number. You already know each "
+                          "direction from the Beginner and Intermediate "
+                          "guides; Advanced just mixes them. Play to "
+                          "practise switching freely."),
+    }
+
     def _not_needed_card(self, parent, col, padx, gid):
         """
-        Placeholder for modes that will never have a tutorial by design
-        (currently just mult_basic — single-digit × single-digit memorisation).
+        Placeholder for modes that will never have a tutorial by design.
+        Currently: mult_basic (recall speed) and conv_advanced (review /
+        consolidation across the basic + intermediate methods).
         """
         card = tk.Frame(parent, bg=SOFT,
                         highlightbackground=CARD_BORDER, highlightthickness=1)
@@ -254,9 +270,12 @@ class TutorialsPanel:
                  font=("Helvetica", 15, "bold"),
                  bg=SOFT, fg="#475569").pack(anchor="w")
 
+        reason = self._NO_GUIDE_REASONS.get(
+            gid,
+            "Nothing extra to walk through here — just play.",
+        )
         tk.Label(inner,
-                 text=("This mode is about recall speed, "
-                       "so there's nothing to walk through. Just play."),
+                 text=reason,
                  font=("Helvetica", 10), bg=SOFT, fg=MUTED,
                  justify="left", wraplength=260).pack(anchor="w", pady=(6, 0))
 

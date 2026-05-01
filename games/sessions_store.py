@@ -65,20 +65,29 @@ class SessionsStore:
 
     def record(self, game_id: str, correct: int, attempts: int,
                accuracy: int, streak: int, minutes: float,
-               ts: datetime.datetime | None = None):
-        """Append a new session record. Silent on empty sessions."""
+               ts: datetime.datetime | None = None,
+               helper_used: bool = False):
+        """Append a new session record. Silent on empty sessions.
+
+        ``helper_used`` (added v0.7.11) flags sessions where the pupil
+        opened the in-game (i) helper at least once. Helper-used
+        sessions still log so the parent PDF / stats screen show real
+        engagement, but downstream consumers can filter them out of
+        leaderboard / mastery views since no points are awarded.
+        """
         if attempts <= 0:
             return
         ts = ts or datetime.datetime.now()
         entry = {
-            "date":     ts.date().isoformat(),
-            "ts":       ts.replace(microsecond=0).isoformat(),
-            "game_id":  game_id or "",
-            "correct":  int(correct),
-            "attempts": int(attempts),
-            "accuracy": int(accuracy),
-            "streak":   int(streak),
-            "minutes":  round(float(minutes), 2),
+            "date":        ts.date().isoformat(),
+            "ts":          ts.replace(microsecond=0).isoformat(),
+            "game_id":     game_id or "",
+            "correct":     int(correct),
+            "attempts":    int(attempts),
+            "accuracy":    int(accuracy),
+            "streak":      int(streak),
+            "minutes":     round(float(minutes), 2),
+            "helper_used": bool(helper_used),
         }
         self._data["sessions"].append(entry)
         self._save()

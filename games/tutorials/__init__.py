@@ -30,8 +30,10 @@ from . import tutorial_conv_intermediate
 from . import tutorial_div_advanced
 from . import tutorial_div_basic
 from . import tutorial_div_intermediate
+from . import tutorial_frac_advanced
 from . import tutorial_frac_basic
 from . import tutorial_frac_intermediate
+from . import tutorial_mult_advanced
 from . import tutorial_mult_intermediate
 
 
@@ -43,16 +45,18 @@ from . import tutorial_mult_intermediate
 TUTORIAL_REGISTRY: dict[str, object] = {
     # "mult_basic":        None,   # intentionally no tutorial — see INTENTIONAL_NO_GUIDE
     "mult_intermediate": tutorial_mult_intermediate,
-    # "mult_advanced":     tutorial_mult_advanced,       # to come
+    "mult_advanced":     tutorial_mult_advanced,
     "div_basic":         tutorial_div_basic,
     "div_intermediate":  tutorial_div_intermediate,
     "div_advanced":      tutorial_div_advanced,
     "frac_basic":        tutorial_frac_basic,
     "frac_intermediate": tutorial_frac_intermediate,
-    # "frac_advanced":     tutorial_frac_advanced,       # to come
+    "frac_advanced":     tutorial_frac_advanced,
     "conv_basic":        tutorial_conv_basic,
     "conv_intermediate": tutorial_conv_intermediate,
-    # "conv_advanced":     tutorial_conv_advanced,       # to come
+    # conv_advanced intentionally has no tutorial — it's the union of the
+    # two methods already taught (frac↔dec from Beginner, frac↔pct from
+    # Intermediate). See INTENTIONAL_NO_GUIDE below.
 }
 
 # Game modes that intentionally have no tutorial. The panel renders these
@@ -62,7 +66,12 @@ TUTORIAL_REGISTRY: dict[str, object] = {
 # mislabel substantive topics (short division, long division, fractions)
 # as "nothing to walk through".
 INTENTIONAL_NO_GUIDE: set[str] = {
-    "mult_basic",   # single-digit × single-digit is pure memorisation
+    "mult_basic",     # single-digit × single-digit is pure memorisation
+    "conv_advanced",  # union of conv_basic (frac↔dec) and conv_intermediate
+                      # (frac↔pct) — no new method to teach, just mixed
+
+                      # directions. Per-gid copy in tutorials_panel
+                      # explains "all three forms are the same number".
 }
 
 

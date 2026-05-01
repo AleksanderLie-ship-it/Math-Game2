@@ -25,6 +25,7 @@ import tkinter as tk
 from tkinter import ttk
 
 from .achievements import ACHIEVEMENTS, ACHIEVEMENTS_BY_ID
+from .tutorials import TUTORIAL_REGISTRY
 
 
 class BaseGame:
@@ -54,6 +55,20 @@ class BaseGame:
         self._answer_times  = []   # timestamps of recent correct answers (for speed demon)
         self._popup_queue   = []   # pending achievement dicts to display
 
+        # ── In-game helper (i)-button state (added v0.7.11) ───────────────
+        # `_helper_used` flips True the first time the pupil opens the
+        # tutorial modal mid-session. It gates the entire end-of-session
+        # reward path: no points to the achievements store, no mastery
+        # checks, no leaderboard prompt. Helper Discovered / Helper
+        # Master are the only achievements still reachable.
+        # `_helper_pause_seconds` accumulates real wall-clock seconds
+        # spent inside the modal so session_minutes excludes them — the
+        # Grind / speed-related stats stay honest.
+        self._helper_used           = False
+        self._helper_pause_seconds  = 0.0
+        self._helper_pause_started  = None
+        self._helper_modal          = None
+
         self._build_layout()
         self.new_question()
         self.update_question_display()
@@ -78,6 +93,19 @@ class BaseGame:
                       relief="flat", bd=0, cursor="hand2",
                       activebackground="#f8fafc", activeforeground="#0f172a",
                       command=self._show_leaderboard).pack(side=tk.RIGHT)
+
+        # In-game (i) helper — only shown for games with a tutorial
+        # registered. Opening it pauses the session timer and flags
+        # `_helper_used`, which zeroes out all end-of-session rewards
+        # except Helper Discovered / Helper Master.
+        if self.GAME_ID and self.GAME_ID in TUTORIAL_REGISTRY:
+            tk.Button(top, text="ⓘ  Help",
+                      font=("Helvetica", 11, "bold"),
+                      bg="#f8fafc", fg="#4f46e5",
+                      relief="flat", bd=0, cursor="hand2",
+                      activebackground="#f8fafc", activeforeground="#4338ca",
+                      command=self._open_helper_modal).pack(side=tk.RIGHT,
+                                                            padx=(0, 14))
 
         # ── Two-column body ───────────────────────────────────────────────────
         main = tk.Frame(self.parent, bg="#f8fafc", padx=24, pady=4)
@@ -383,15 +411,171 @@ class BaseGame:
         if newly_earned:
             self._show_popups_queued(newly_earned)
 
-        if self.GAME_ID and self.attempts > 0:
+        # Helper-used sessions never prompt for a leaderboard entry —
+        # the run is reward-free by design and must not pollute the top-10.
+        if self.GAME_ID and self.attempts > 0 and not self._helper_used:
             self._prompt_score_entry()
         else:
             self.back_callback()
+
+    # ============================================================ in-game helper
+
+    def _open_helper_modal(self):
+        """Open the current game's tutorial in a modal Toplevel.
+
+        Pauses the session timer (wall-clock seconds spent in the modal
+        are subtracted from session_minutes at end of session) and flips
+        `_helper_used` True. Helper-used sessions:
+          * Award zero points
+          * Skip mastery / streak / milestone end achievements
+          * Do not prompt for a leaderboard entry
+          * Are still logged to sessions_store with helper_used=True
+          * Can still earn Helper Discovered (>=1 use) and Helper Master
+            (>=10 lifetime uses).
+        """
+        if self._helper_modal is not None:
+            try:
+                self._helper_modal.lift()
+            except Exception:
+                pass
+            return
+
+        mod = TUTORIAL_REGISTRY.get(self.GAME_ID)
+        if mod is None:
+            return
+
+        # Mark helper used + bump lifetime counter immediately so the
+        # achievement check at modal-close has the new value to read.
+        self._helper_used = True
+        try:
+            self._as.record_helper_use()
+        except Exception:
+            pass
+
+        # Pause any pending feedback redirect — answer auto-advance must
+        # not fire while the pupil is reading the slides.
+        if self.feedback_after_id:
+            self.parent.after_cancel(self.feedback_after_id)
+            self.feedback_after_id = None
+
+        # Pause session timer.
+        self._helper_pause_started = _time.time()
+
+        # Build the Toplevel modal.
+        from .tutorials.slideshow_frame import (
+            SlideshowFrame, award_tutorial_achievements,
+        )
+        from .achievements import GAME_NAMES
+
+        root = self.parent.winfo_toplevel()
+        root.update_idletasks()
+
+        win = tk.Toplevel(root)
+        win.title("Help")
+        win.transient(root)
+        win.grab_set()
+        win.configure(bg="#f8fafc")
+
+        # Size to comfortably hold the SlideshowFrame's 720×340 canvas
+        # plus its surrounding card / nav. Mirrors the floor used by
+        # SlideshowFrame itself.
+        w, h = 1280, 720
+        try:
+            cx = root.winfo_x() + root.winfo_width()  // 2
+            cy = root.winfo_y() + root.winfo_height() // 2
+            win.geometry(f"{w}x{h}+{max(cx - w // 2, 0)}+{max(cy - h // 2, 0)}")
+        except Exception:
+            win.geometry(f"{w}x{h}")
+
+        host = tk.Frame(win, bg="#f8fafc")
+        host.pack(fill=tk.BOTH, expand=True)
+
+        self._helper_modal = win
+        # WM-close (X button) routes through our close handler so timer
+        # bookkeeping always runs.
+        win.protocol("WM_DELETE_WINDOW", self._close_helper_modal)
+
+        # Record tutorial-viewed so the Bookworm / Scholar achievements
+        # remain reachable from the helper path — opening a tutorial
+        # really did happen, even if it was via the in-game shortcut.
+        try:
+            self._as.record_tutorial_viewed(self.GAME_ID)
+            award_tutorial_achievements(host, self._as)
+        except Exception:
+            pass
+
+        SlideshowFrame(
+            host,
+            back_callback = self._close_helper_modal,
+            title         = getattr(mod, "TITLE", GAME_NAMES.get(self.GAME_ID, "Help")),
+            lead          = getattr(mod, "LEAD", ""),
+            slides        = getattr(mod, "SLIDES", []),
+            examples      = getattr(mod, "EXAMPLES", [{}]),
+            ach_store     = self._as,
+            game_id       = self.GAME_ID,
+        )
+
+    def _close_helper_modal(self):
+        """Tear down the helper modal, resume timer, fire helper achievements."""
+        # Resume timer.
+        if self._helper_pause_started is not None:
+            self._helper_pause_seconds += max(
+                0.0, _time.time() - self._helper_pause_started
+            )
+            self._helper_pause_started = None
+
+        win = self._helper_modal
+        self._helper_modal = None
+        if win is not None:
+            try:
+                win.grab_release()
+            except Exception:
+                pass
+            try:
+                win.destroy()
+            except Exception:
+                pass
+
+        # Fire any newly-earned helper achievements with the standard toast.
+        self._check_helper_achievements()
+
+        # Restore focus to the answer entry so the pupil can keep typing.
+        try:
+            self.answer_entry.focus_set()
+        except Exception:
+            pass
+
+    def _check_helper_achievements(self):
+        """Run `when='helper'` achievements and surface popups."""
+        try:
+            stats = self._as.get_stats()
+        except Exception:
+            return
+        newly_earned = []
+        for ach in ACHIEVEMENTS:
+            if ach.get("when") != "helper":
+                continue
+            if self._as.has(ach["id"]):
+                continue
+            try:
+                if ach["check"](stats, {}):
+                    if self._as.earn(ach["id"], ach["points"]):
+                        newly_earned.append(ach)
+            except Exception:
+                continue
+        if newly_earned:
+            self._show_popups_queued(newly_earned)
 
     # ============================================================ achievements
 
     def _check_live_achievements(self):
         """Check streak / speed / first-correct achievements mid-game."""
+        # Helper-used sessions earn zero further achievements after the
+        # modal is opened — anything earned beforehand stays banked, but
+        # the rest of the session is reward-free by design.
+        if self._helper_used:
+            return
+
         now     = _time.time()
         recent  = [t for t in self._answer_times if now - t <= 60.0]
         speed_ok = len(recent) >= 10
@@ -421,19 +605,31 @@ class BaseGame:
 
     def _commit_and_check(self):
         """Commit session stats to store and check end achievements.
-        Returns list of newly earned achievement dicts."""
+        Returns list of newly earned achievement dicts.
+
+        Helper-used sessions short-circuit the achievements-store commit
+        and the end achievement sweep — zero points, no mastery unlock,
+        no leaderboard contribution. The session is still appended to
+        sessions_store with helper_used=True so the parent PDF / stats
+        screen still see the engagement.
+        """
         if self.attempts == 0:
             return []
 
         accuracy        = round((self.correct / self.attempts) * 100)
         now             = datetime.datetime.now()
-        session_minutes = (now - self._session_start).total_seconds() / 60.0
+        # Subtract the wall-clock seconds the modal was open so a long
+        # tutorial read does not falsely unlock The Grind (>=30 min).
+        elapsed = (now - self._session_start).total_seconds()
+        session_minutes = max(0.0,
+                              (elapsed - self._helper_pause_seconds) / 60.0)
 
-        self._as.record_session(
-            self.GAME_ID,
-            self.correct, self.attempts, accuracy, self.streak,
-            now.date().isoformat(), now.hour,
-        )
+        if not self._helper_used:
+            self._as.record_session(
+                self.GAME_ID,
+                self.correct, self.attempts, accuracy, self.streak,
+                now.date().isoformat(), now.hour,
+            )
 
         # Append a full history record for the Progress & Stats screen
         if self._sess is not None:
@@ -446,9 +642,17 @@ class BaseGame:
                     streak=self.streak,
                     minutes=session_minutes,
                     ts=self._session_start,
+                    helper_used=self._helper_used,
                 )
             except Exception:
                 pass  # never let logging crash the game
+
+        # Helper-used sessions skip every `when="end"` achievement.
+        # Helper Discovered / Helper Master fire from the modal-close
+        # path (`_check_helper_achievements`) — there is nothing else
+        # to award here.
+        if self._helper_used:
+            return []
 
         stats = self._as.get_stats()
         ctx   = {"session_minutes": session_minutes}

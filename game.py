@@ -4,13 +4,40 @@ game.py
 Main entry point. Shows the profile screen, then the game-selection menu,
 and launches mini-games.
 
-To add a new game:
-  1. Create games/your_game.py subclassing BaseGame
-  2. Import it below and add it to CATEGORIES
+Menu architecture (v0.7.12)
+---------------------------
+The main menu is two rows:
+
+  Row 1 — Game families (4 tiles): Multiplication, Division,
+          Fractions: Operations, Fractions: Conversions. One tile per
+          family. Click a tile -> difficulty-selection screen with three
+          cards (Beginner / Intermediate / Advanced).
+
+  Row 2 — Tools (4 tiles): Practice Missed, Progress & Stats,
+          Tutorials, Shop (locked, ships with v0.8.0).
+
+To add a new game family:
+  1. Create games/<family>_basic.py / _intermediate.py / _advanced.py
+     subclassing BaseGame.
+  2. Add an entry to GAMES below — one family record with a
+     difficulties list of three classes / game_ids.
+  3. (Optional) drop PNGs in assets/games/<family>/<difficulty>.png to
+     replace the emoji placeholders on the difficulty cards. See
+     games/assets_loader.py for the path contract.
+
+Foundation hooks landed in v0.7.12 (ready, not yet active):
+  * games.theme.theme()       — palette source-of-truth (light + dark).
+                                 New menu screens read from it. Existing
+                                 screens keep their hardcoded hex until
+                                 each is migrated; dark-mode toggle in
+                                 Settings stays disabled until then.
+  * games.assets_loader       — optional per-difficulty PNG loader with
+                                 emoji fallback so adding art later is
+                                 a zero-code drop-in.
 """
 # Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
-__version__ = "0.7.7"
+__version__ = "0.7.12"
 
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -39,139 +66,152 @@ from games.achievements       import (
     ACHIEVEMENTS, ACHIEVEMENTS_BY_ID, CATEGORY_ORDER,
     UNLOCK_REQUIREMENTS, GAME_NAMES, GAME_IDS, GAME_SHORT,
 )
+from games.theme              import theme
+from games.assets_loader      import game_tile_image, tier_glyph
 
 
-# ── Game registry ──────────────────────────────────────────────────────────────
+# ── Game family registry ───────────────────────────────────────────────────────
+#
+# One entry per game family. Each family expands to three difficulties on the
+# difficulty-selection screen. The shape was widened in v0.7.12 from a flat
+# list-of-cards into this nested form so the main menu can compress to four
+# tiles instead of twelve, and so future families plug in by appending a
+# single record.
+#
+# Per-difficulty `asset_key` matches the path `assets/games/<family_id>/<key>.png`
+# read by `assets_loader.game_tile_image`. PNGs are optional — the renderer
+# falls back to `assets_loader.tier_glyph(key)` (🌱 / 🔥 / ⚡) when missing.
 
-CATEGORIES = [
+GAMES = [
     {
-        "label": "Multiplication",
-        "games": [
+        "id":      "mult",
+        "label":   "Multiplication",
+        "tagline": "Times tables, multi-digit partial products, the X-shift method.",
+        "glyph":   "✕",
+        "accent":  "#4f46e5",
+        "difficulties": [
             {
-                "name":     "Beginner",
-                "desc":     "Times tables 1-10.\nBuild speed and confidence.",
-                "badge":    "Beginner",
-                "badge_bg": "#f0fdf4",
-                "badge_fg": "#15803d",
-                "cls":      MultiplicationBasic,
-                "game_id":  "mult_basic",
+                "key":       "basic",
+                "name":      "Beginner",
+                "desc":      "Times tables 1-10.\nBuild speed and confidence.",
+                "cls":       MultiplicationBasic,
+                "game_id":   "mult_basic",
             },
             {
-                "name":     "Intermediate",
-                "desc":     "Two-digit and mixed problems.\nLike 34 x 7 or 34 x 78.",
-                "badge":    "Intermediate",
-                "badge_bg": "#fffbeb",
-                "badge_fg": "#b45309",
-                "cls":      MultiplicationIntermediate,
-                "game_id":  "mult_intermediate",
+                "key":       "intermediate",
+                "name":      "Intermediate",
+                "desc":      "Two-digit and mixed problems.\nLike 34 x 7 or 34 x 78.",
+                "cls":       MultiplicationIntermediate,
+                "game_id":   "mult_intermediate",
             },
             {
-                "name":     "Advanced",
-                "desc":     "Three-digit x two-digit.\nLike 134 x 78.",
-                "badge":    "Advanced",
-                "badge_bg": "#fef2f2",
-                "badge_fg": "#b91c1c",
-                "cls":      MultiplicationAdvanced,
-                "game_id":  "mult_advanced",
+                "key":       "advanced",
+                "name":      "Advanced",
+                "desc":      "Three-digit x two-digit.\nLike 134 x 78.",
+                "cls":       MultiplicationAdvanced,
+                "game_id":   "mult_advanced",
             },
         ],
     },
     {
-        "label": "Division",
-        "games": [
+        "id":      "div",
+        "label":   "Division",
+        "tagline": "Norwegian short division and trappa long division into decimals.",
+        "glyph":   "÷",
+        "accent":  "#0ea5e9",
+        "difficulties": [
             {
-                "name":     "Beginner",
-                "desc":     "Whole-number answers.\nDivisors from 2 to 10.",
-                "badge":    "Beginner",
-                "badge_bg": "#f0fdf4",
-                "badge_fg": "#15803d",
-                "cls":      DivisionBasic,
-                "game_id":  "div_basic",
+                "key":       "basic",
+                "name":      "Beginner",
+                "desc":      "Whole-number answers.\nDivisors from 2 to 10.",
+                "cls":       DivisionBasic,
+                "game_id":   "div_basic",
             },
             {
-                "name":     "Intermediate",
-                "desc":     "Larger dividends.\nAlways whole-number answers.",
-                "badge":    "Intermediate",
-                "badge_bg": "#fffbeb",
-                "badge_fg": "#b45309",
-                "cls":      DivisionIntermediate,
-                "game_id":  "div_intermediate",
+                "key":       "intermediate",
+                "name":      "Intermediate",
+                "desc":      "Larger dividends.\nAlways whole-number answers.",
+                "cls":       DivisionIntermediate,
+                "game_id":   "div_intermediate",
             },
             {
-                "name":     "Advanced",
-                "desc":     "Large numbers + decimal answers.\nLike 13 / 2 = 6.5.",
-                "badge":    "Advanced",
-                "badge_bg": "#fef2f2",
-                "badge_fg": "#b91c1c",
-                "cls":      DivisionAdvanced,
-                "game_id":  "div_advanced",
+                "key":       "advanced",
+                "name":      "Advanced",
+                "desc":      "Large numbers + decimal answers.\nLike 13 / 2 = 6.5.",
+                "cls":       DivisionAdvanced,
+                "game_id":   "div_advanced",
             },
         ],
     },
     {
-        "label": "Fractions — Operations",
-        "games": [
+        "id":      "frac",
+        "label":   "Fractions: Operations",
+        "tagline": "Adding and subtracting fractions with same / different / unrelated denominators.",
+        "glyph":   "½",
+        "accent":  "#9333ea",
+        "difficulties": [
             {
-                "name":     "Beginner",
-                "desc":     "Same-denominator +/−.\nLike 2/5 + 1/5 = 3/5.",
-                "badge":    "Beginner",
-                "badge_bg": "#f0fdf4",
-                "badge_fg": "#15803d",
-                "cls":      FracBasic,
-                "game_id":  "frac_basic",
+                "key":       "basic",
+                "name":      "Beginner",
+                "desc":      "Same-denominator +/−.\nLike 2/5 + 1/5 = 3/5.",
+                "cls":       FracBasic,
+                "game_id":   "frac_basic",
             },
             {
-                "name":     "Intermediate",
-                "desc":     "Different denominators.\nFind the common denominator first.",
-                "badge":    "Intermediate",
-                "badge_bg": "#fffbeb",
-                "badge_fg": "#b45309",
-                "cls":      FracIntermediate,
-                "game_id":  "frac_intermediate",
+                "key":       "intermediate",
+                "name":      "Intermediate",
+                "desc":      "Different denominators.\nFind the common denominator first.",
+                "cls":       FracIntermediate,
+                "game_id":   "frac_intermediate",
             },
             {
-                "name":     "Advanced",
-                "desc":     "Unrelated denominators.\nLike 3/13 + 9/19 = 174/247.",
-                "badge":    "Advanced",
-                "badge_bg": "#fef2f2",
-                "badge_fg": "#b91c1c",
-                "cls":      FracAdvanced,
-                "game_id":  "frac_advanced",
+                "key":       "advanced",
+                "name":      "Advanced",
+                "desc":      "Unrelated denominators.\nLike 3/13 + 9/19 = 174/247.",
+                "cls":       FracAdvanced,
+                "game_id":   "frac_advanced",
             },
         ],
     },
     {
-        "label": "Fractions — Conversions",
-        "games": [
+        "id":      "conv",
+        "label":   "Fractions: Conversions",
+        "tagline": "Switching between fractions, decimals, and percentages.",
+        "glyph":   "%",
+        "accent":  "#10b981",
+        "difficulties": [
             {
-                "name":     "Beginner",
-                "desc":     "Fractions ↔ decimals.\nLike 3/4 = 0.75.",
-                "badge":    "Beginner",
-                "badge_bg": "#f0fdf4",
-                "badge_fg": "#15803d",
-                "cls":      ConvBasic,
-                "game_id":  "conv_basic",
+                "key":       "basic",
+                "name":      "Beginner",
+                "desc":      "Fractions ↔ decimals.\nLike 3/4 = 0.75.",
+                "cls":       ConvBasic,
+                "game_id":   "conv_basic",
             },
             {
-                "name":     "Intermediate",
-                "desc":     "Fractions ↔ percentages.\nLike 1/4 = 25%.",
-                "badge":    "Intermediate",
-                "badge_bg": "#fffbeb",
-                "badge_fg": "#b45309",
-                "cls":      ConvIntermediate,
-                "game_id":  "conv_intermediate",
+                "key":       "intermediate",
+                "name":      "Intermediate",
+                "desc":      "Fractions ↔ percentages.\nLike 1/4 = 25%.",
+                "cls":       ConvIntermediate,
+                "game_id":   "conv_intermediate",
             },
             {
-                "name":     "Advanced",
-                "desc":     "All three directions.\nFraction, decimal, percentage.",
-                "badge":    "Advanced",
-                "badge_bg": "#fef2f2",
-                "badge_fg": "#b91c1c",
-                "cls":      ConvAdvanced,
-                "game_id":  "conv_advanced",
+                "key":       "advanced",
+                "name":      "Advanced",
+                "desc":      "All three directions.\nFraction, decimal, percentage.",
+                "cls":       ConvAdvanced,
+                "game_id":   "conv_advanced",
             },
         ],
     },
+]
+
+
+# Difficulty-tier metadata (shared across all families). Order matters —
+# this is also the order in which difficulty cards are rendered.
+_DIFFICULTY_TIERS = [
+    {"key": "basic",        "label": "Beginner",     "badge_bg_token": "good_bg",   "badge_fg_token": "good"},
+    {"key": "intermediate", "label": "Intermediate", "badge_bg_token": "warn_bg",   "badge_fg_token": "warn"},
+    {"key": "advanced",     "label": "Advanced",     "badge_bg_token": "danger_bg", "badge_fg_token": "danger"},
 ]
 
 
@@ -188,6 +228,19 @@ class App:
 
         self._current       = None
         self._scroll_target = None
+
+        # The difficulty-selection screen needs to know which family it
+        # belongs to so the back-button on the game itself can return to
+        # the right difficulty page (rather than the main menu directly).
+        # Cleared by show_menu(); set by show_difficulty(family).
+        self._current_family = None
+
+        # Tk garbage-collects PhotoImage instances the moment the
+        # function that loaded them returns, even if the widget is still
+        # on screen. We hold every loaded tile image in this list so it
+        # stays alive for as long as the App does. show_menu() and
+        # show_difficulty() both clear and repopulate it on rebuild.
+        self._tile_images: list[tk.PhotoImage] = []
 
         # Active profile stores — set after profile selection
         self._profile_name    = None
@@ -473,6 +526,7 @@ class App:
 
     def show_menu(self):
         self._clear()
+        self._current_family = None
 
         outer = tk.Frame(self.root, bg="#f8fafc")
         outer.pack(fill=tk.BOTH, expand=True)
@@ -553,11 +607,29 @@ class App:
                   activebackground="#1e293b", activeforeground="white",
                   command=self._show_achievements).pack(anchor="e")
 
-        # ── Game categories ───────────────────────────────────────────────────
-        for cat in CATEGORIES:
-            self._category_row(inner, cat)
+        # ── Game family row (4 tiles) ────────────────────────────────────────
+        # One tile per family. Click → show_difficulty(family). Compact
+        # by design — 12 game cards collapse to 4 here. Any future
+        # families plug in by appending an entry to GAMES.
+        self._tile_images = []   # release prior refs; renderer repopulates
 
-        self._review_row(inner)
+        family_section = tk.Frame(inner, bg="#f8fafc", padx=48)
+        family_section.pack(fill=tk.X, pady=(0, 28))
+
+        tk.Label(family_section, text="GAMES",
+                 font=("Helvetica", 13, "bold"),
+                 bg="#f8fafc", fg="#94a3b8").pack(anchor="w", pady=(0, 12))
+
+        family_grid = tk.Frame(family_section, bg="#f8fafc")
+        family_grid.pack(fill=tk.X)
+        for col in range(len(GAMES)):
+            family_grid.columnconfigure(col, weight=1)
+        for col, family in enumerate(GAMES):
+            padx = (0, 14) if col < len(GAMES) - 1 else 0
+            self._family_tile(family_grid, family, col, padx)
+
+        # ── Tools row (4 tiles): Practice / Stats / Tutorials / Shop ────────
+        self._tools_row(inner)
 
         # ── Footer ────────────────────────────────────────────────────────────
         tk.Frame(inner, bg="#e2e8f0", height=1).pack(fill=tk.X, padx=48, pady=(24, 0))
@@ -565,38 +637,108 @@ class App:
                  text=f"Math Practice  v{__version__}  ·  © 2026 Aleksander Lie",
                  font=("Helvetica", 8), bg="#f8fafc", fg="#cbd5e1").pack(pady=(6, 24))
 
-    # ------------------------------------------------------------------ rows
+    # ============================================================ family tiles
 
-    def _category_row(self, parent, cat):
+    def _family_tile(self, parent, family, col, padx):
+        """Render a single game-family card on the main menu.
+
+        Compact tile — glyph + label + tagline + a row of three small
+        status pills (one per difficulty). Clicking anywhere on the tile
+        opens the difficulty-selection page for the family.
+        """
+        card = tk.Frame(parent, bg="white",
+                        highlightbackground="#e2e8f0", highlightthickness=1,
+                        cursor="hand2")
+        card.grid(row=0, column=col, sticky="nsew", padx=padx)
+
+        inner = tk.Frame(card, bg="white", padx=20, pady=20)
+        inner.pack(fill=tk.BOTH, expand=True)
+
+        # Top: family glyph in a colored disc + "Game" pill on the right.
+        top = tk.Frame(inner, bg="white")
+        top.pack(fill=tk.X, pady=(0, 12))
+
+        glyph_box = tk.Frame(top, bg=family["accent"], padx=12, pady=4)
+        glyph_box.pack(side=tk.LEFT)
+        tk.Label(glyph_box, text=family["glyph"],
+                 font=("Helvetica", 22, "bold"),
+                 bg=family["accent"], fg="white").pack()
+
+        tk.Label(top, text="Game",
+                 font=("Helvetica", 8, "bold"),
+                 bg="#eef2ff", fg="#4f46e5",
+                 padx=8, pady=2).pack(side=tk.RIGHT)
+
+        # Family label + tagline
+        tk.Label(inner, text=family["label"],
+                 font=("Helvetica", 14, "bold"),
+                 bg="white", fg="#0f172a",
+                 wraplength=220, justify="left", anchor="w").pack(fill=tk.X)
+        tk.Label(inner, text=family["tagline"],
+                 font=("Helvetica", 9), bg="white", fg="#64748b",
+                 wraplength=220, justify="left", anchor="w").pack(fill=tk.X,
+                                                                   pady=(4, 14))
+
+        # Difficulty status pills — one per difficulty, in tier order.
+        # State: "open", "locked", or "sharp" (sharp_<gid> achievement
+        # earned). Surfaces progression at a glance without making the
+        # user click into the family.
+        status_row = tk.Frame(inner, bg="white")
+        status_row.pack(fill=tk.X, pady=(0, 10))
+        for tier in _DIFFICULTY_TIERS:
+            diff = next((d for d in family["difficulties"]
+                         if d["key"] == tier["key"]), None)
+            if not diff:
+                continue
+            gid    = diff["game_id"]
+            unlock = UNLOCK_REQUIREMENTS.get(gid)
+            locked = bool(unlock and not self._ach_store.has(unlock))
+            sharp  = self._ach_store.has(f"sharp_{gid}")
+            if sharp:
+                pill_bg, pill_fg, pill_txt = "#f0fdf4", "#15803d", f"✓ {tier['label'][:3]}"
+            elif locked:
+                pill_bg, pill_fg, pill_txt = "#f1f5f9", "#94a3b8", f"🔒 {tier['label'][:3]}"
+            else:
+                pill_bg, pill_fg, pill_txt = "#eef2ff", "#4f46e5", tier['label'][:3]
+            tk.Label(status_row, text=pill_txt,
+                     font=("Helvetica", 8, "bold"),
+                     bg=pill_bg, fg=pill_fg,
+                     padx=7, pady=2).pack(side=tk.LEFT, padx=(0, 4))
+
+        tk.Button(
+            inner, text="Choose difficulty  →",
+            font=("Helvetica", 10, "bold"),
+            bg=family["accent"], fg="white",
+            relief="flat", bd=0, padx=12, pady=6, cursor="hand2",
+            activebackground="#1e293b", activeforeground="white",
+            command=lambda f=family: self.show_difficulty(f),
+        ).pack(anchor="w")
+
+        # Make the entire tile clickable, not just the button.
+        def _open(e=None, f=family):
+            self.show_difficulty(f)
+        for w in (card, inner, top):
+            w.bind("<Button-1>", _open)
+
+    # ============================================================ tools row
+
+    def _tools_row(self, parent):
+        """Bottom-of-menu tools strip. Four tiles in a row.
+
+        Layout was widened from 3 → 4 in v0.7.12 to make room for the
+        Shop placeholder (locked, ships in v0.8.0). Order is: Practice
+        Missed, Progress & Stats, Tutorials, Shop.
+        """
         section = tk.Frame(parent, bg="#f8fafc", padx=48)
         section.pack(fill=tk.X, pady=(0, 28))
 
-        tk.Label(section, text=cat["label"],
+        tk.Label(section, text="TOOLS",
                  font=("Helvetica", 13, "bold"),
                  bg="#f8fafc", fg="#94a3b8").pack(anchor="w", pady=(0, 12))
 
         cards = tk.Frame(section, bg="#f8fafc")
         cards.pack(fill=tk.X)
-        n = len(cat["games"])
-        for col, game in enumerate(cat["games"]):
-            cards.columnconfigure(col, weight=1)
-            padx    = (0, 16) if col < n - 1 else 0
-            game_id = game.get("game_id", "")
-            unlock  = UNLOCK_REQUIREMENTS.get(game_id)
-            locked  = bool(unlock and not self._ach_store.has(unlock))
-            self._game_card(cards, game, col, padx, locked=locked, unlock_req=unlock)
-
-    def _review_row(self, parent):
-        section = tk.Frame(parent, bg="#f8fafc", padx=48)
-        section.pack(fill=tk.X, pady=(0, 28))
-
-        tk.Label(section, text="Review",
-                 font=("Helvetica", 13, "bold"),
-                 bg="#f8fafc", fg="#94a3b8").pack(anchor="w", pady=(0, 12))
-
-        cards = tk.Frame(section, bg="#f8fafc")
-        cards.pack(fill=tk.X)
-        for col in range(3):
+        for col in range(4):
             cards.columnconfigure(col, weight=1)
 
         # ── Practice Missed card ─────────────────────────────────────────
@@ -612,9 +754,9 @@ class App:
         card = tk.Frame(cards, bg=card_bg,
                         highlightbackground="#e2e8f0", highlightthickness=1,
                         cursor="hand2" if enabled else "arrow")
-        card.grid(row=0, column=0, sticky="nsew", padx=(0, 16))
+        card.grid(row=0, column=0, sticky="nsew", padx=(0, 14))
 
-        inner = tk.Frame(card, bg=card_bg, padx=22, pady=22)
+        inner = tk.Frame(card, bg=card_bg, padx=20, pady=20)
         inner.pack(fill=tk.BOTH, expand=True)
 
         tk.Label(inner, text="Review",
@@ -622,18 +764,18 @@ class App:
                  bg="#f0f4ff", fg="#4f46e5",
                  padx=10, pady=3).pack(anchor="w", pady=(0, 12))
         tk.Label(inner, text="Practice Missed",
-                 font=("Helvetica", 15, "bold"),
+                 font=("Helvetica", 14, "bold"),
                  bg=card_bg, fg=name_fg).pack(anchor="w")
         tk.Label(inner, text=desc,
-                 font=("Helvetica", 10), bg=card_bg, fg=desc_fg,
-                 justify="left").pack(anchor="w", pady=(6, 18))
+                 font=("Helvetica", 9), bg=card_bg, fg=desc_fg,
+                 justify="left", wraplength=200).pack(anchor="w", pady=(6, 14))
 
         play_btn = tk.Button(
-            inner, text="Start Review  ->",
+            inner, text="Start  →",
             font=("Helvetica", 10, "bold"),
             bg="#4f46e5" if enabled else "#e2e8f0",
             fg="white"   if enabled else "#94a3b8",
-            relief="flat", bd=0, padx=14, pady=6,
+            relief="flat", bd=0, padx=12, pady=5,
             cursor="hand2" if enabled else "arrow",
             state="normal" if enabled else "disabled",
             command=self._launch_practice if enabled else None,
@@ -652,14 +794,14 @@ class App:
             stats_desc = (f"{sess_count} session{'s' if sess_count != 1 else ''}"
                           f" across {days} day{'s' if days != 1 else ''}.")
         else:
-            stats_desc = "Charts, trends, and a printable report for parents."
+            stats_desc = "Charts, trends, parent PDF."
 
         stats_card = tk.Frame(cards, bg="white",
                               highlightbackground="#e2e8f0", highlightthickness=1,
                               cursor="hand2")
-        stats_card.grid(row=0, column=1, sticky="nsew", padx=(0, 16))
+        stats_card.grid(row=0, column=1, sticky="nsew", padx=(0, 14))
 
-        stats_inner = tk.Frame(stats_card, bg="white", padx=22, pady=22)
+        stats_inner = tk.Frame(stats_card, bg="white", padx=20, pady=20)
         stats_inner.pack(fill=tk.BOTH, expand=True)
 
         tk.Label(stats_inner, text="Insights",
@@ -667,17 +809,17 @@ class App:
                  bg="#ecfdf5", fg="#047857",
                  padx=10, pady=3).pack(anchor="w", pady=(0, 12))
         tk.Label(stats_inner, text="Progress & Stats",
-                 font=("Helvetica", 15, "bold"),
+                 font=("Helvetica", 14, "bold"),
                  bg="white", fg="#0f172a").pack(anchor="w")
         tk.Label(stats_inner, text=stats_desc,
-                 font=("Helvetica", 10), bg="white", fg="#64748b",
-                 justify="left", wraplength=260).pack(anchor="w", pady=(6, 18))
+                 font=("Helvetica", 9), bg="white", fg="#64748b",
+                 justify="left", wraplength=200).pack(anchor="w", pady=(6, 14))
 
         tk.Button(
-            stats_inner, text="View Progress  ->",
+            stats_inner, text="Open  →",
             font=("Helvetica", 10, "bold"),
             bg="#047857", fg="white",
-            relief="flat", bd=0, padx=14, pady=6, cursor="hand2",
+            relief="flat", bd=0, padx=12, pady=5, cursor="hand2",
             activebackground="#065f46", activeforeground="white",
             command=self._launch_stats,
         ).pack(anchor="w")
@@ -694,15 +836,15 @@ class App:
             if not (_UR.get(gid) and not self._ach_store.has(_UR[gid]))
         )
         total = len(TUTORIAL_REGISTRY)
-        tut_desc = (f"{unlocked} of {total} guide{'s' if total != 1 else ''} "
-                    f"unlocked. Step-by-step walkthroughs of each game.")
+        tut_desc = (f"{unlocked}/{total} guide{'s' if total != 1 else ''} "
+                    f"unlocked.\nStep-by-step walkthroughs.")
 
         tut_card = tk.Frame(cards, bg="white",
                             highlightbackground="#e2e8f0", highlightthickness=1,
                             cursor="hand2")
-        tut_card.grid(row=0, column=2, sticky="nsew")
+        tut_card.grid(row=0, column=2, sticky="nsew", padx=(0, 14))
 
-        tut_inner = tk.Frame(tut_card, bg="white", padx=22, pady=22)
+        tut_inner = tk.Frame(tut_card, bg="white", padx=20, pady=20)
         tut_inner.pack(fill=tk.BOTH, expand=True)
 
         tk.Label(tut_inner, text="Learn",
@@ -710,17 +852,17 @@ class App:
                  bg="#eef2ff", fg="#4f46e5",
                  padx=10, pady=3).pack(anchor="w", pady=(0, 12))
         tk.Label(tut_inner, text="Tutorials",
-                 font=("Helvetica", 15, "bold"),
+                 font=("Helvetica", 14, "bold"),
                  bg="white", fg="#0f172a").pack(anchor="w")
         tk.Label(tut_inner, text=tut_desc,
-                 font=("Helvetica", 10), bg="white", fg="#64748b",
-                 justify="left", wraplength=260).pack(anchor="w", pady=(6, 18))
+                 font=("Helvetica", 9), bg="white", fg="#64748b",
+                 justify="left", wraplength=200).pack(anchor="w", pady=(6, 14))
 
         tk.Button(
-            tut_inner, text="Open Tutorials  ->",
+            tut_inner, text="Open  →",
             font=("Helvetica", 10, "bold"),
             bg="#4f46e5", fg="white",
-            relief="flat", bd=0, padx=14, pady=6, cursor="hand2",
+            relief="flat", bd=0, padx=12, pady=5, cursor="hand2",
             activebackground="#4338ca", activeforeground="white",
             command=self._launch_tutorials,
         ).pack(anchor="w")
@@ -728,66 +870,216 @@ class App:
         for w in (tut_card, tut_inner):
             w.bind("<Button-1>", lambda e: self._launch_tutorials())
 
-    # ------------------------------------------------------------------ cards
+        # ── Shop card (locked placeholder, ships v0.8.0) ─────────────────
+        # Reserved for the achievement-points spending loop: themes
+        # (dark mode), avatars, frames. Click → messagebox describing
+        # planned content. Architecture note: the tile is a regular
+        # Tools-row entry, not a special case — when v0.8.0 wires it up
+        # we just flip `enabled` and replace `_show_shop` with a real
+        # launcher.
+        self._shop_tile(cards)
 
-    def _game_card(self, parent, game, col, padx, locked=False, unlock_req=None):
-        if locked:
-            self._locked_card(parent, game, col, padx, unlock_req)
-        else:
-            self._unlocked_card(parent, game, col, padx)
-
-    def _unlocked_card(self, parent, game, col, padx):
-        card = tk.Frame(parent, bg="white",
+    def _shop_tile(self, parent):
+        """Locked Shop tile in the Tools row. Placeholder for v0.8.0."""
+        card = tk.Frame(parent, bg="#f1f5f9",
                         highlightbackground="#e2e8f0", highlightthickness=1,
                         cursor="hand2")
-        card.grid(row=0, column=col, sticky="nsew", padx=padx)
+        card.grid(row=0, column=3, sticky="nsew")
 
-        inner = tk.Frame(card, bg="white", padx=22, pady=22)
+        inner = tk.Frame(card, bg="#f1f5f9", padx=20, pady=20)
         inner.pack(fill=tk.BOTH, expand=True)
 
-        tk.Label(inner, text=game["badge"],
+        tk.Label(inner, text="Coming v0.8.0",
                  font=("Helvetica", 9, "bold"),
-                 bg=game["badge_bg"], fg=game["badge_fg"],
+                 bg="#faf5ff", fg="#9333ea",
                  padx=10, pady=3).pack(anchor="w", pady=(0, 12))
-        tk.Label(inner, text=game["name"],
-                 font=("Helvetica", 15, "bold"),
-                 bg="white", fg="#0f172a").pack(anchor="w")
-        tk.Label(inner, text=game["desc"],
-                 font=("Helvetica", 10), bg="white", fg="#64748b",
-                 justify="left").pack(anchor="w", pady=(6, 18))
-        tk.Button(inner, text="Play  ->",
-                  font=("Helvetica", 10, "bold"),
-                  bg="#0f172a", fg="white", relief="flat", bd=0,
-                  padx=14, pady=6, cursor="hand2",
-                  activebackground="#1e293b", activeforeground="white",
-                  command=lambda g=game: self._launch(g)).pack(anchor="w")
+        tk.Label(inner, text="🛍  Shop",
+                 font=("Helvetica", 14, "bold"),
+                 bg="#f1f5f9", fg="#475569").pack(anchor="w")
+        tk.Label(inner,
+                 text="Spend points on themes, avatars, and frames.",
+                 font=("Helvetica", 9), bg="#f1f5f9", fg="#94a3b8",
+                 justify="left", wraplength=200).pack(anchor="w", pady=(6, 14))
+
+        tk.Button(
+            inner, text="🔒 Locked",
+            font=("Helvetica", 10, "bold"),
+            bg="#e2e8f0", fg="#94a3b8",
+            relief="flat", bd=0, padx=12, pady=5, cursor="hand2",
+            activebackground="#cbd5e1", activeforeground="#475569",
+            command=self._show_shop,
+        ).pack(anchor="w")
 
         for w in (card, inner):
-            w.bind("<Button-1>", lambda e, g=game: self._launch(g))
+            w.bind("<Button-1>", lambda e: self._show_shop())
 
-    def _locked_card(self, parent, game, col, padx, unlock_req):
-        card = tk.Frame(parent, bg="#f8fafc",
+    def _show_shop(self):
+        """Placeholder Shop entry. Replace with a real launcher in v0.8.0."""
+        messagebox.showinfo(
+            "Shop — coming in v0.8.0",
+            "The Shop will let you spend achievement points on:\n\n"
+            "  • Color themes  (Dark mode is the priority unlock)\n"
+            "  • Avatar portraits  (fantasy classes — knight, wizard, ...)\n"
+            "  • Avatar border frames\n\n"
+            "Keep earning points — they'll have somewhere to go soon.",
+        )
+
+    # ============================================================ difficulty page
+
+    def show_difficulty(self, family):
+        """Render the difficulty-selection screen for a game family.
+
+        Three cards in a row, one per difficulty. Cards locked behind
+        UNLOCK_REQUIREMENTS show a clear unlock hint instead of the
+        play button. Back returns to the main menu.
+
+        Per-difficulty artwork is loaded from
+        `assets/games/<family_id>/<difficulty>.png` if present, otherwise
+        the renderer falls back to the tier emoji glyph (🌱 / 🔥 / ⚡).
+        Adding art later is a zero-code drop-in.
+        """
+        self._clear()
+        self._current_family = family
+        self._tile_images    = []   # release prior refs
+
+        outer = tk.Frame(self.root, bg="#f8fafc")
+        outer.pack(fill=tk.BOTH, expand=True)
+        self._current = outer
+
+        # Top bar — back button only
+        top = tk.Frame(outer, bg="#f8fafc", padx=24, pady=10)
+        top.pack(fill=tk.X)
+        tk.Button(top, text="← Menu",
+                  font=("Helvetica", 10), bg="#f8fafc", fg="#475569",
+                  relief="flat", bd=0, cursor="hand2",
+                  activebackground="#f8fafc", activeforeground="#0f172a",
+                  command=self.show_menu).pack(side=tk.LEFT)
+
+        # Header — family glyph + label + tagline
+        hdr = tk.Frame(outer, bg="#f8fafc", padx=48, pady=18)
+        hdr.pack(fill=tk.X)
+
+        glyph_box = tk.Frame(hdr, bg=family["accent"], padx=14, pady=8)
+        glyph_box.pack(side=tk.LEFT)
+        tk.Label(glyph_box, text=family["glyph"],
+                 font=("Helvetica", 28, "bold"),
+                 bg=family["accent"], fg="white").pack()
+
+        title_col = tk.Frame(hdr, bg="#f8fafc")
+        title_col.pack(side=tk.LEFT, padx=(16, 0), fill=tk.X, expand=True)
+        tk.Label(title_col, text=family["label"],
+                 font=("Helvetica", 26, "bold"),
+                 bg="#f8fafc", fg="#0f172a").pack(anchor="w")
+        tk.Label(title_col, text=family["tagline"],
+                 font=("Helvetica", 11),
+                 bg="#f8fafc", fg="#64748b").pack(anchor="w", pady=(4, 0))
+        tk.Label(title_col, text="Choose a difficulty.",
+                 font=("Helvetica", 11, "bold"),
+                 bg="#f8fafc", fg="#475569").pack(anchor="w", pady=(8, 0))
+
+        # 3-column difficulty grid
+        cards_wrap = tk.Frame(outer, bg="#f8fafc", padx=48, pady=20)
+        cards_wrap.pack(fill=tk.BOTH, expand=True)
+
+        cards = tk.Frame(cards_wrap, bg="#f8fafc")
+        cards.pack(fill=tk.BOTH, expand=True)
+        for col in range(3):
+            cards.columnconfigure(col, weight=1)
+        cards.rowconfigure(0, weight=1)
+
+        for col, diff in enumerate(family["difficulties"]):
+            padx   = (0, 16) if col < len(family["difficulties"]) - 1 else 0
+            unlock = UNLOCK_REQUIREMENTS.get(diff["game_id"])
+            locked = bool(unlock and not self._ach_store.has(unlock))
+            self._difficulty_tile(cards, family, diff, col, padx,
+                                  locked=locked, unlock_req=unlock)
+
+    def _difficulty_tile(self, parent, family, diff, col, padx,
+                         locked=False, unlock_req=None):
+        """One card on the difficulty-selection screen.
+
+        Card structure (top→bottom):
+          1. Asset slot — PNG from assets/games/<fam>/<diff>.png if it
+             exists, else a large tier glyph (🌱 / 🔥 / ⚡).
+          2. Difficulty badge (Beginner / Intermediate / Advanced).
+          3. Difficulty name.
+          4. Description.
+          5. Play button (or locked-unlock hint).
+        """
+        # Tier metadata (badge colours match the existing per-difficulty palette).
+        tier = next((t for t in _DIFFICULTY_TIERS if t["key"] == diff["key"]), _DIFFICULTY_TIERS[0])
+        T    = theme()
+        badge_bg = T[tier["badge_bg_token"]]
+        badge_fg = T[tier["badge_fg_token"]]
+
+        bg     = "white"   if not locked else "#f8fafc"
+        ink_fg = "#0f172a" if not locked else "#94a3b8"
+        sub_fg = "#64748b" if not locked else "#94a3b8"
+
+        card = tk.Frame(parent, bg=bg,
                         highlightbackground="#e2e8f0", highlightthickness=1,
                         cursor="hand2")
         card.grid(row=0, column=col, sticky="nsew", padx=padx)
 
-        inner = tk.Frame(card, bg="#f8fafc", padx=22, pady=22)
+        # Asset slot — fixed 200×120 box, centered glyph or PNG.
+        asset_slot = tk.Frame(card, bg=bg, height=140)
+        asset_slot.pack(fill=tk.X)
+        asset_slot.pack_propagate(False)
+
+        img = game_tile_image(family["id"], diff["key"])
+        if img is not None:
+            self._tile_images.append(img)   # keep ref alive
+            tk.Label(asset_slot, image=img, bg=bg).pack(expand=True)
+        else:
+            # Fallback: large emoji tier glyph centered on the slot.
+            tk.Label(asset_slot, text=tier_glyph(diff["key"]),
+                     font=("Helvetica", 56),
+                     bg=bg, fg=ink_fg if not locked else "#cbd5e1").pack(expand=True)
+
+        # 1px divider between asset and body
+        tk.Frame(card, bg="#e2e8f0", height=1).pack(fill=tk.X)
+
+        inner = tk.Frame(card, bg=bg, padx=20, pady=18)
         inner.pack(fill=tk.BOTH, expand=True)
 
-        badge_row = tk.Frame(inner, bg="#f8fafc")
-        badge_row.pack(anchor="w", pady=(0, 12))
-        tk.Label(badge_row, text=game["badge"],
+        badge_row = tk.Frame(inner, bg=bg)
+        badge_row.pack(anchor="w", pady=(0, 10))
+        tk.Label(badge_row, text=tier["label"],
                  font=("Helvetica", 9, "bold"),
-                 bg="#e2e8f0", fg="#94a3b8",
+                 bg=badge_bg if not locked else "#e2e8f0",
+                 fg=badge_fg if not locked else "#94a3b8",
                  padx=10, pady=3).pack(side=tk.LEFT)
-        tk.Label(badge_row, text="  🔒 Locked",
-                 font=("Helvetica", 9, "bold"),
-                 bg="#f8fafc", fg="#94a3b8").pack(side=tk.LEFT)
+        if locked:
+            tk.Label(badge_row, text="  🔒 Locked",
+                     font=("Helvetica", 9, "bold"),
+                     bg=bg, fg="#94a3b8").pack(side=tk.LEFT)
 
-        tk.Label(inner, text=game["name"],
+        tk.Label(inner, text=diff["name"],
                  font=("Helvetica", 15, "bold"),
-                 bg="#f8fafc", fg="#94a3b8").pack(anchor="w")
+                 bg=bg, fg=ink_fg).pack(anchor="w")
+        tk.Label(inner, text=diff["desc"],
+                 font=("Helvetica", 10), bg=bg, fg=sub_fg,
+                 justify="left").pack(anchor="w", pady=(6, 14))
 
+        if locked:
+            self._render_lock_hint(inner, unlock_req)
+            return
+
+        tk.Button(
+            inner, text="Play  →",
+            font=("Helvetica", 10, "bold"),
+            bg="#0f172a", fg="white", relief="flat", bd=0,
+            padx=14, pady=6, cursor="hand2",
+            activebackground="#1e293b", activeforeground="white",
+            command=lambda f=family, d=diff: self._launch(f, d),
+        ).pack(anchor="w")
+
+        for w in (card, asset_slot, inner):
+            w.bind("<Button-1>",
+                   lambda e, f=family, d=diff: self._launch(f, d))
+
+    def _render_lock_hint(self, parent, unlock_req):
+        """Render the unlock-hint block inside a locked difficulty card."""
         req_name = req_desc = req_game = ""
         if unlock_req:
             ach = ACHIEVEMENTS_BY_ID.get(unlock_req)
@@ -799,16 +1091,12 @@ class App:
         unlock_label = (f"Unlock: '{req_name}' in {req_game}"
                         if req_game else f"Unlock: '{req_name}' achievement")
 
-        tk.Label(inner, text=game["desc"],
-                 font=("Helvetica", 10), bg="#f8fafc", fg="#94a3b8",
-                 justify="left").pack(anchor="w", pady=(6, 10))
-
-        unlock_frame = tk.Frame(inner, bg="#e2e8f0",
+        unlock_frame = tk.Frame(parent, bg="#e2e8f0",
                                 highlightbackground="#cbd5e1", highlightthickness=1)
         unlock_frame.pack(fill=tk.X, pady=(0, 8))
         tk.Label(unlock_frame, text=unlock_label,
                  font=("Helvetica", 9), bg="#e2e8f0", fg="#64748b",
-                 padx=10, pady=6, wraplength=200, justify="left").pack(anchor="w")
+                 padx=10, pady=6, wraplength=220, justify="left").pack(anchor="w")
 
         def _show_lock_info(e=None):
             messagebox.showinfo(
@@ -817,13 +1105,9 @@ class App:
                 f"Earn the '{req_name}' achievement in {req_game} to unlock it:\n\n"
                 f"{req_desc}",
             )
-
-        def _bind_all_children(widget):
-            widget.bind("<Button-1>", _show_lock_info)
-            for child in widget.winfo_children():
-                _bind_all_children(child)
-
-        _bind_all_children(card)
+        # Bind on the unlock_frame itself; the parent card binds in caller.
+        for w in (unlock_frame,) + tuple(unlock_frame.winfo_children()):
+            w.bind("<Button-1>", _show_lock_info)
 
     # ------------------------------------------------------------ achievements
 
@@ -952,17 +1236,26 @@ class App:
 
     # ----------------------------------------------------------------- launch
 
-    def _launch(self, game):
+    def _launch(self, family, difficulty):
+        """Launch a game.
+
+        Back button on the game returns to the difficulty-selection
+        screen for the same family (not all the way to the main menu) —
+        the pupil typically wants to try a sibling difficulty next, and
+        a single extra back-press still gets them to the menu.
+        """
         self._clear()
         frame = tk.Frame(self.root, bg="#f8fafc")
         frame.pack(fill=tk.BOTH, expand=True)
         self._current = frame
-        game["cls"](frame,
-                    back_callback=self.show_menu,
-                    ach_store=self._ach_store,
-                    missed_store=self._missed_store,
-                    scores_store=self._scores_store,
-                    sessions_store=self._sessions_store)
+        difficulty["cls"](
+            frame,
+            back_callback=lambda f=family: self.show_difficulty(f),
+            ach_store=self._ach_store,
+            missed_store=self._missed_store,
+            scores_store=self._scores_store,
+            sessions_store=self._sessions_store,
+        )
 
     def _launch_practice(self):
         self._clear()

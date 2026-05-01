@@ -40,18 +40,24 @@ Raw ints throughout — fractions.Fraction auto-reduces on construction,
 which would silently collapse "75/100" into "3/4" and destroy the whole
 teaching point of showing the intermediate power-of-ten form.
 
-Slide plan
-----------
-1. Read the question    — show the current example's prompt cleanly.
-2. Place-value anchor   — tenths bar + hundredths grid; "decimals ARE fractions".
-3. Find the bridge      — per-direction: den × m = 10/100/1000, or count digits.
-4. Apply the rewrite    — ×m on both top & bottom, or "put digits on top".
-5. Read or simplify     — frac→dec: read off the decimal.
-                          dec→frac: divide by the greatest common divisor.
-6. The arrow both ways  — fixed 3/4 ↔ 0.75 round-trip demo.
-7. Full chain           — compact end-to-end render of the current example.
-8. Pitfall              — 3/8 ≠ 0.38 (can't copy digits),
-                          1/4 ≠ 0.4  (4 is the piece count, not a decimal place).
+Slide plan (reordered v0.7.10.1 — overview first, then breakdown)
+-----------------------------------------------------------------
+1. Whole conversion in one line — compact end-to-end render of the
+   current example. Pupil gets the shape of the method up front.
+2. Decimals name the piece size — tenths bar + hundredths grid.
+3. Find the missing number       — per-direction: den × m = 10/100/1000,
+                                    or count digits after the point.
+4. Multiply top and bottom        — ×m on both, or "put the digits on top".
+5. Read off (or simplify)        — frac→dec reads off; dec→frac divides
+                                    by the shared factor (greatest common
+                                    divisor) to reach the simplest form.
+6. The arrow goes both ways      — fixed 3/4 ↔ 0.75 round-trip demo.
+7. Pitfalls                      — 3/8 ≠ 0.38 (can't copy digits),
+                                    1/4 ≠ 0.4 (4 is the piece count, not a
+                                    decimal place).
+
+The original "Read the question" slide was dropped — the overview at
+slide 1 already shows the question as the first item on the chain.
 """
 # Copyright (c) 2026 Aleksander Lie. All rights reserved.
 
@@ -89,17 +95,17 @@ EXAMPLES = [
     # 3/4 ↔ 0.75   (frac→dec, ×25, hundredths — headline)
     dict(direction="frac_to_dec", frac_num=3, frac_den=4,  dec_str="0.75",
          mult=25,  target_den=100,  target_num=75,  digit_n=2, gcd_reverse=25),
-    # 1/2 ↔ 0.5    (frac→dec, ×5, tenths — easy confidence win)
-    dict(direction="frac_to_dec", frac_num=1, frac_den=2,  dec_str="0.5",
+    # 0.5 ↔ 1/2    (dec→frac, tenths, ÷5 simplify — easy reverse anchor)
+    dict(direction="dec_to_frac", frac_num=1, frac_den=2,  dec_str="0.5",
          mult=5,   target_den=10,   target_num=5,   digit_n=1, gcd_reverse=5),
     # 3/8 ↔ 0.375  (frac→dec, ×125, thousandths — stretches the method)
     dict(direction="frac_to_dec", frac_num=3, frac_den=8,  dec_str="0.375",
          mult=125, target_den=1000, target_num=375, digit_n=3, gcd_reverse=125),
-    # 0.4 ↔ 2/5    (dec→frac, tenths, ÷2 simplify — reverse-direction anchor)
+    # 0.4 ↔ 2/5    (dec→frac, tenths, ÷2 simplify)
     dict(direction="dec_to_frac", frac_num=2, frac_den=5,  dec_str="0.4",
          mult=2,   target_den=10,   target_num=4,   digit_n=1, gcd_reverse=2),
-    # 3/10 ↔ 0.3   (frac→dec, already tenths, mult=1 — "no bridge needed")
-    dict(direction="frac_to_dec", frac_num=3, frac_den=10, dec_str="0.3",
+    # 0.3 ↔ 3/10   (dec→frac, gcd=1 → "already lowest" branch fires)
+    dict(direction="dec_to_frac", frac_num=3, frac_den=10, dec_str="0.3",
          mult=1,   target_den=10,   target_num=3,   digit_n=1, gcd_reverse=1),
 ]
 
@@ -136,53 +142,15 @@ def _digit_noun(n: int) -> str:
     return "digit" if n == 1 else "digits"
 
 
-# ── Slide 1 — Read the question ──────────────────────────────────────────────
-
-def _slide_1(canvas, ex, w, h):
-    direction = ex["direction"]
-
-    if direction == "frac_to_dec":
-        draw_note(canvas,
-                  "The question:  convert this fraction to a decimal.",
-                  38, color=DIM, size=11)
-    else:
-        draw_note(canvas,
-                  "The question:  convert this decimal to a fraction.",
-                  38, color=DIM, size=11)
-
-    cy = 135
-
-    if direction == "frac_to_dec":
-        _draw_fraction(canvas, w / 2 - 80, cy,
-                       ex["frac_num"], ex["frac_den"], size=36)
-        canvas.create_text(w / 2 + 10, cy, text="=",
-                           fill=DIM, font=("Helvetica", 32, "bold"))
-        canvas.create_text(w / 2 + 80, cy, text="?",
-                           fill=ACCENT, font=("Helvetica", 34, "bold"))
-    else:
-        canvas.create_text(w / 2 - 80, cy, text=ex["dec_str"],
-                           fill=INK, font=("Helvetica", 36, "bold"))
-        canvas.create_text(w / 2 + 10, cy, text="=",
-                           fill=DIM, font=("Helvetica", 32, "bold"))
-        canvas.create_text(w / 2 + 80, cy, text="?",
-                           fill=ACCENT, font=("Helvetica", 34, "bold"))
-
-    # Anchor pill carrying the whole-pack framing.
-    draw_pill(canvas, w / 2, cy + 82,
-              "a decimal is a fraction with 10, 100, or 1000 on the bottom",
-              bg="#fef3c7", fg=WARN, size=12)
-
-    draw_note(canvas,
-              "Fractions and decimals are two ways of writing the same "
-              "number. We just need to match the form the question asks for.",
-              h - 28, color=MUTED, size=11)
-
-
 # ── Slide 2 — Place-value anchor ─────────────────────────────────────────────
+#
+# (Old "Read the question" slide dropped — the overview now serves that
+# role at position 1; see SLIDES list at the bottom of this file.)
+
 
 def _slide_2(canvas, ex, w, h):
     draw_note(canvas,
-              "Decimals just name the piece size with 10 or 100 or 1000.",
+              "A decimal names the piece size — 10, 100, or 1000.",
               36, color=DIM, size=11)
 
     # ── Tenths bar — 10 segments, 1 shaded for 0.1 ─────────────────────────
@@ -234,11 +202,11 @@ def _slide_2(canvas, ex, w, h):
               bg="#dcfce7", fg=GOOD, size=11)
 
     draw_note(canvas,
-              "Count the digits after the point — that names the bottom of the fraction.",
+              "Count the digits after the point — that tells you the bottom.",
               h - 28, color=MUTED, size=11)
 
 
-# ── Slide 3 — Find the bridge ────────────────────────────────────────────────
+# ── Slide 3 — Find the missing number ────────────────────────────────────────
 
 def _slide_3(canvas, ex, w, h):
     if ex["direction"] == "frac_to_dec":
@@ -270,7 +238,7 @@ def _slide_3_frac_to_dec(canvas, ex, w, h):
         return
 
     draw_note(canvas,
-              f"What do we multiply {frac_den} by to land on 10, 100, or 1000?",
+              f"What do we multiply {frac_den} by to get 10, 100, or 1000?",
               36, color=DIM, size=11)
 
     cy = 140
@@ -306,7 +274,7 @@ def _slide_3_frac_to_dec(canvas, ex, w, h):
               bg="#dcfce7", fg=GOOD, size=11)
 
     draw_note(canvas,
-              "That's the bridge into decimal land — any of 2, 4, 5, 8, 10 reaches a power of ten.",
+              "Any of 2, 4, 5, 8, or 10 can reach 10, 100, or 1000.",
               h - 28, color=MUTED, size=11)
 
 
@@ -351,7 +319,7 @@ def _slide_3_dec_to_frac(canvas, ex, w, h):
               bg="#dcfce7", fg=GOOD, size=11)
 
     draw_note(canvas,
-              "1 digit means tenths, 2 digits hundredths, 3 digits thousandths.",
+              "1 digit = tenths, 2 digits = hundredths, 3 digits = thousandths.",
               h - 28, color=MUTED, size=11)
 
 
@@ -421,7 +389,7 @@ def _slide_4_frac_to_dec(canvas, ex, w, h):
               bg="#dcfce7", fg=GOOD, size=11)
 
     draw_note(canvas,
-              "Multiplying top and bottom by the same number leaves the value unchanged.",
+              "Multiplying top and bottom by the same number keeps the value the same.",
               h - 28, color=MUTED, size=11)
 
 
@@ -431,7 +399,8 @@ def _slide_4_dec_to_frac(canvas, ex, w, h):
     target_den = ex["target_den"]
 
     draw_note(canvas,
-              "Put the digits after the point on top. That's the raw fraction.",
+              "Put the digits after the point on top. That's your fraction "
+              "— still to simplify.",
               38, color=DIM, size=11)
 
     cy = 135
@@ -471,7 +440,7 @@ def _slide_4_dec_to_frac(canvas, ex, w, h):
               bg="#dcfce7", fg=GOOD, size=12)
 
     draw_note(canvas,
-              "Every decimal can be written this way — it's just a fraction in disguise.",
+              "A decimal is just a fraction in disguise.",
               h - 28, color=MUTED, size=11)
 
 
@@ -574,11 +543,13 @@ def _slide_5_dec_to_frac(canvas, ex, w, h):
         canvas.create_line(u_x1, u_y + 5, u_x2, u_y + 5, fill=GOOD, width=2)
 
         draw_pill(canvas, w / 2, cy + 105,
-                  f"greatest common divisor = {g}  —  divide top and bottom by {g}",
+                  f"shared factor (greatest common divisor) = {g}  —  "
+                  f"divide top and bottom by {g}",
                   bg="#dcfce7", fg=GOOD, size=11)
 
         draw_note(canvas,
-                  "Raw power-of-ten form first; then simplify to clean form.",
+                  "First put it on 10, 100, or 1000. Then divide top and "
+                  "bottom by their shared factor to reach the simplest form.",
                   h - 28, color=MUTED, size=11)
     else:
         # gcd = 1 — already lowest. Doesn't fire for the current 5 examples
@@ -590,10 +561,10 @@ def _slide_5_dec_to_frac(canvas, ex, w, h):
         _draw_fraction(canvas, w / 2, cy, target_num, target_den,
                        num_color=GOOD, den_color=GOOD, size=36)
         draw_pill(canvas, w / 2, cy + 90,
-                  "greatest common divisor = 1  —  already lowest",
+                  "no shared factor — already in simplest form",
                   bg="#dcfce7", fg=GOOD, size=12)
         draw_note(canvas,
-                  "Top and bottom share no common factor larger than 1.",
+                  "Top and bottom share no factor larger than 1.",
                   h - 28, color=MUTED, size=11)
 
 
@@ -639,11 +610,11 @@ def _slide_6(canvas, ex, w, h):
                        fill=ACCENT, font=("Helvetica", 10, "bold"))
 
     draw_pill(canvas, w / 2, cy + 108,
-              "multiply up to a power of ten  ↔  divide by the greatest common divisor",
+              "multiply up to 10 / 100 / 1000  ↔  divide by the shared factor",
               bg="#dcfce7", fg=GOOD, size=11)
 
     draw_note(canvas,
-              "The method depends on which form you start with — but it's the same idea either way.",
+              "Same idea either way — pick the side that matches the question.",
               h - 28, color=MUTED, size=11)
 
 
@@ -741,7 +712,7 @@ def _slide_7_dec_to_frac(canvas, ex, w, h):
                        text=f"raw {_power_word(target_den)}",
                        fill=ACCENT, font=("Helvetica", 10, "bold"))
     canvas.create_text(x_end, cy + 62,
-                       text=f"÷ greatest common divisor ({g})",
+                       text=f"÷ shared factor ({g})",
                        fill=GOOD, font=("Helvetica", 10, "bold"))
 
     draw_pill(canvas, w / 2, cy + 108,
@@ -808,7 +779,8 @@ def _slide_8(canvas, ex, w, h):
               bg="#fef3c7", fg=WARN, size=11)
 
     draw_note(canvas,
-              "The fraction bar is division — not a free pass to move digits around the point.",
+              "Always rewrite to 10, 100, or 1000 first — that's the step "
+              "the wrong answers skip.",
               h - 26, color=WARN, size=12)
 
 
@@ -829,63 +801,64 @@ def _draw_column_conv(canvas, cx, cy, frac_str, dec_str,
 
 
 # ── Slide list (what the framework consumes) ─────────────────────────────────
+#
+# Reordered v0.7.10.1: the overview (old slide 7) is now slide 1 — pupils
+# get the whole pipeline in one line first, then we break it down. The old
+# "Read the question" slide is dropped because the overview already shows
+# the question on the left side of the chain. _slide_7 / _slide_8 keep
+# their old names; only the SLIDES order + numbering change.
 
 SLIDES = [
     {
-        "title":   "1 · Read the question",
-        "caption": ("Fractions and decimals are two ways of writing the "
-                    "same number.  The job is to switch between the forms."),
-        "draw":    _slide_1,
+        "title":   "1 · The whole conversion in one line",
+        "caption": ("Starting form to final form on a single line. The "
+                    "next slides break each step down."),
+        "draw":    _slide_7,
     },
     {
         "title":   "2 · Decimals name the piece size",
-        "caption": ("Each digit after the point counts pieces of a fixed "
-                    "size — tenths, hundredths, thousandths."),
+        "caption": ("Each digit after the point names a piece size — "
+                    "tenths, hundredths, thousandths."),
         "draw":    _slide_2,
     },
     {
-        "title":   "3 · Find the bridge number",
-        "caption": ("Going to a decimal: find what the denominator must be "
-                    "multiplied by to reach 10, 100, or 1000.  Going to a "
-                    "fraction: count the digits after the point — that's "
-                    "the bottom."),
+        "title":   "3 · Find the missing number",
+        "caption": ("Fraction → decimal: what number times the bottom "
+                    "lands on 10, 100, or 1000?\n"
+                    "Decimal → fraction: count the digits after the "
+                    "point — that names the bottom."),
         "draw":    _slide_3,
     },
     {
-        "title":   "4 · Apply the rewrite",
-        "caption": ("Going to a decimal: multiply top AND bottom by the "
-                    "same number.  Going to a fraction: put the digits on "
-                    "top over the power-of-ten denominator you just "
-                    "counted."),
+        "title":   "4 · Multiply top and bottom (or put digits on top)",
+        "caption": ("Fraction → decimal: multiply top AND bottom by the "
+                    "same number.\n"
+                    "Decimal → fraction: put the digits on top over 10, "
+                    "100, or 1000."),
         "draw":    _slide_4,
     },
     {
         "title":   "5 · Read it off (or simplify)",
-        "caption": ("Fraction → decimal: the top becomes the digits, and "
-                    "the bottom's zeros set the place value.  "
-                    "Decimal → fraction: divide top and bottom by the "
-                    "greatest common divisor to reach the clean form."),
+        "caption": ("Fraction → decimal: the top becomes the digits, "
+                    "the bottom's zeros set the place value.\n"
+                    "Decimal → fraction: divide top and bottom by their "
+                    "shared factor to reach the simplest form."),
         "draw":    _slide_5,
     },
     {
         "title":   "6 · The arrow goes both ways",
-        "caption": ("Same number, two forms.  Multiplying up to a power "
-                    "of ten and dividing back down by the greatest common "
-                    "divisor are the two halves of the same round trip."),
+        "caption": ("Same number, two forms. Multiplying up to a power "
+                    "of ten and dividing back by the shared factor are "
+                    "the two halves of the same round trip."),
         "draw":    _slide_6,
     },
     {
-        "title":   "7 · The whole pipeline",
-        "caption": ("Starting form to final form on a single line — the "
-                    "method for this example, compressed."),
-        "draw":    _slide_7,
-    },
-    {
-        "title":   "8 · Watch the pitfalls",
-        "caption": ("Two classic mistakes: copying digits straight across "
-                    "the fraction bar, and treating the denominator as a "
-                    "decimal place.  Always rewrite to 10, 100, or 1000 "
-                    "first — that's the one step the pitfalls skip."),
+        "title":   "7 · Watch the pitfalls",
+        "caption": ("Two classic mistakes: copying the digits straight "
+                    "across the fraction bar, and treating the bottom "
+                    "number as a decimal place. Always rewrite to 10, "
+                    "100, or 1000 first — that is the step the pitfalls "
+                    "skip."),
         "draw":    _slide_8,
     },
 ]

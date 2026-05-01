@@ -45,14 +45,15 @@ Pedagogy (in order)
 3. Decimal extension — fixed reference 13 ÷ 2 = 6,5 demonstrating the
    comma + zero bring-down move.
 4. Walk the full chain on the cycled example (integer or decimal).
-5. Verify by multiplying the quotient back against the divisor.
-6. Pitfalls — forgot the comma, stopped before the remainder hit 0.
+5. Pitfalls — forgot the comma, stopped before the remainder hit 0.
 
-Examples (5 — three exact integer cases matching the game's 75% branch
-plus two terminating-decimal cases matching the 25% branch). The game
+Examples (5 — one integer warmup matching the game's 75% branch plus
+four terminating-decimal cases matching the 25% branch). The game
 generates `divisor × quotient = dividend` for integers and uses divisors
-{2, 4, 5} with `dividend % divisor != 0` for decimals; every example
-here matches that contract.
+{2, 4, 5} with `dividend % divisor != 0` for decimals; every decimal
+example here matches that contract. The 4-of-5 decimal weighting is
+deliberate — Advanced's novel beat is the comma + zero bring-down, and
+the cycled examples should give the pupil repeated practice with it.
 
 Rendering
 ---------
@@ -180,15 +181,10 @@ def _build_qstr(steps) -> str:
 
 def _draw_layout(canvas, ox, oy, ex,
                  highlight_step=None, show_through_step=None,
-                 show_bring_down_arrow=False,
-                 show_comma_callout=False,
                  underline_quotient=True):
     """Render the trappa layout with origin at (ox, oy).
 
     Parameters mirror Intermediate's `_draw_layout`, plus:
-      show_comma_callout : bool — draw a WARN-coloured arrow + label
-                                   pointing at the quotient comma. Used by
-                                   the decimal-beat slide.
       underline_quotient : bool — Norwegian double-underline. Off for slide 1
                                    (skeleton) and slide 2 (refresher recap).
     """
@@ -243,24 +239,6 @@ def _draw_layout(canvas, ox, oy, ex,
         canvas.create_line(q_x, u_y,     q_x + q_w, u_y,     fill=GOOD, width=2)
         canvas.create_line(q_x, u_y + 4, q_x + q_w, u_y + 4, fill=GOOD, width=2)
 
-    # Comma callout: arrow from above pointing at the quotient comma.
-    if show_comma_callout and div_data["has_decimal"]:
-        comma_idx = qstr.index(",")
-        prefix_probe = canvas.create_text(
-            0, -9999, text=qstr[:comma_idx], anchor="w", font=LAYOUT_FONT,
-        )
-        pbx1, _, pbx2, _ = canvas.bbox(prefix_probe)
-        canvas.delete(prefix_probe)
-        prefix_w = pbx2 - pbx1
-        comma_x_q = q_x + prefix_w
-        draw_arrow(canvas,
-                   comma_x_q + 4, oy - 26,
-                   comma_x_q + 4, oy - 8,
-                   color=WARN, width=1)
-        canvas.create_text(comma_x_q + 4, oy - 32,
-                           text="comma", anchor="s",
-                           fill=WARN, font=("Helvetica", 10, "bold"))
-
     # ── Per-step rows ───────────────────────────────────────────────────────
     row = 1
     for k, step in enumerate(steps):
@@ -279,12 +257,6 @@ def _draw_layout(canvas, ox, oy, ex,
                 canvas.create_text(ox + col * COL_W, oy + row * LINE_H,
                                    text=ch, anchor="w",
                                    fill=color, font=LAYOUT_FONT)
-            if show_bring_down_arrow and highlight_step == k:
-                arr_x = ox + step["end_col"] * COL_W + COL_W * 0.3
-                draw_arrow(canvas,
-                           arr_x, oy + 14,
-                           arr_x, oy + row * LINE_H - 10,
-                           color=ACCENT, width=1, dash=(3, 3))
             row += 1
 
         # (b) subtraction row

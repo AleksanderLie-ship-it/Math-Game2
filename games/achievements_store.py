@@ -27,6 +27,10 @@ _DEFAULT_STATS = {
     "tutorials_viewed":        [],      # unique game_ids opened from the Tutorials panel
     "tutorials_finished":      [],      # unique game_ids read to the last slide
     "tutorial_example_cycled": False,   # flipped True the first time the pupil uses "Next example"
+    # In-game helper (i)-button hook (added v0.7.11). Counts every modal
+    # open. Drives the Helper Discovered (>=1) / Helper Master (>=10)
+    # achievements in the Learning category.
+    "helper_used_total":       0,
 }
 
 
@@ -152,3 +156,10 @@ class AchievementsStore:
         if not s.get("tutorial_example_cycled", False):
             s["tutorial_example_cycled"] = True
             self._save()
+
+    def record_helper_use(self):
+        """Increment the in-game helper-modal open counter. Drives
+        Helper Discovered / Helper Master."""
+        s = self._data["stats"]
+        s["helper_used_total"] = int(s.get("helper_used_total", 0)) + 1
+        self._save()
