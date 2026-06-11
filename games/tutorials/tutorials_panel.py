@@ -57,25 +57,25 @@ class TutorialsPanel:
     def _build(self):
         T = theme()
         # Top bar
-        top = tk.Frame(self.parent, bg=BG, padx=24, pady=10)
+        top = tk.Frame(self.parent, bg=T["bg"], padx=24, pady=10)
         top.pack(fill=tk.X)
 
         tk.Button(top, text="← Menu",
-                  font=("Helvetica", 10), bg=BG, fg=T["muted"],
+                  font=("Helvetica", 10), bg=T["bg"], fg=T["muted"],
                   relief="flat", bd=0, cursor="hand2",
-                  activebackground=BG, activeforeground=INK,
+                  activebackground=T["bg"], activeforeground=T["ink"],
                   command=self.back_callback).pack(side=tk.LEFT)
 
         # Header
-        hdr = tk.Frame(self.parent, bg=BG, padx=48, pady=24)
+        hdr = tk.Frame(self.parent, bg=T["bg"], padx=48, pady=24)
         hdr.pack(fill=tk.X)
         tk.Label(hdr, text="📖  Tutorials",
                  font=("Helvetica", 28, "bold"),
-                 bg=BG, fg=T["ink"]).pack(anchor="w")
+                 bg=T["bg"], fg=T["ink"]).pack(anchor="w")
         tk.Label(hdr,
                  text=("Step-by-step explanations for each game. "
                        "Unlocked in the same order as the games themselves."),
-                 font=("Helvetica", 12), bg=BG, fg=T["muted"]).pack(anchor="w",
+                 font=("Helvetica", 12), bg=T["bg"], fg=T["muted"]).pack(anchor="w",
                                                                pady=(4, 0))
 
         # Scrollable body — same pattern as stats_screen
@@ -85,7 +85,7 @@ class TutorialsPanel:
         vsb = ttk.Scrollbar(outer, orient="vertical")
         vsb.pack(side=tk.RIGHT, fill=tk.Y)
 
-        canvas = tk.Canvas(outer, bg=BG, highlightthickness=0,
+        canvas = tk.Canvas(outer, bg=T["bg"], highlightthickness=0,
                            yscrollcommand=vsb.set)
         canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         vsb.config(command=canvas.yview)
@@ -117,12 +117,12 @@ class TutorialsPanel:
             if not tutorials_in_cat:
                 continue
 
-            section = tk.Frame(self._body, bg=BG, padx=48)
+            section = tk.Frame(self._body, bg=T["bg"], padx=48)
             section.pack(fill=tk.X, pady=(4, 24))
 
             tk.Label(section, text=cat_label,
                      font=("Helvetica", 13, "bold"),
-                     bg=BG, fg=T["dim"]).pack(anchor="w", pady=(0, 12))
+                     bg=T["bg"], fg=T["dim"]).pack(anchor="w", pady=(0, 12))
 
             cards = tk.Frame(section, bg=T["bg"])
             cards.pack(fill=tk.X)
@@ -162,39 +162,39 @@ class TutorialsPanel:
             self._locked_card(parent, col, padx, gid)
             return
 
-        card = tk.Frame(parent, bg=CARD_BG,
-                        highlightbackground=CARD_BORDER, highlightthickness=1,
+        card = tk.Frame(parent, bg=T["card_bg"],
+                        highlightbackground=T["card_border"], highlightthickness=1,
                         cursor="hand2")
         card.grid(row=0, column=col, sticky="nsew", padx=padx)
 
-        inner = tk.Frame(card, bg=CARD_BG, padx=22, pady=22)
+        inner = tk.Frame(card, bg=T["card_bg"], padx=22, pady=22)
         inner.pack(fill=tk.BOTH, expand=True)
 
         tk.Label(inner, text="Guide",
                  font=("Helvetica", 9, "bold"),
-                 bg="#eef2ff", fg=ACCENT,
+                 bg="#eef2ff", fg=T["accent"],
                  padx=10, pady=3).pack(anchor="w", pady=(0, 12))
 
         tk.Label(inner, text=GAME_NAMES.get(gid, gid),
                  font=("Helvetica", 15, "bold"),
-                 bg=CARD_BG, fg=T["ink"]).pack(anchor="w")
+                 bg=T["card_bg"], fg=T["ink"]).pack(anchor="w")
 
         blurb = lead or f"{len(slides)}-step walkthrough."
         tk.Label(inner, text=blurb,
-                 font=("Helvetica", 10), bg=CARD_BG, fg=MUTED,
+                 font=("Helvetica", 10), bg=T["card_bg"], fg=T["muted"],
                  justify="left", wraplength=260).pack(anchor="w", pady=(6, 18))
 
         meta = f"{len(slides)} slides"
         if len(examples) > 1:
             meta += f"   ·   {len(examples)} examples"
         tk.Label(inner, text=meta,
-                 font=("Helvetica", 9), bg=CARD_BG, fg=T["dim"]).pack(anchor="w",
+                 font=("Helvetica", 9), bg=T["card_bg"], fg=T["dim"]).pack(anchor="w",
                                                                  pady=(0, 10))
 
         tk.Button(
             inner, text="Open guide  →",
             font=("Helvetica", 10, "bold"),
-            bg=ACCENT, fg="white",
+            bg=T["accent"], fg="white",
             relief="flat", bd=0, padx=14, pady=6, cursor="hand2",
             activebackground="#4338ca", activeforeground="white",
             command=lambda g=gid: self._launch_tutorial(g),
@@ -209,30 +209,30 @@ class TutorialsPanel:
         req    = ACHIEVEMENTS_BY_ID.get(req_id, {})
         req_name = req.get("name", "a previous achievement")
 
-        card = tk.Frame(parent, bg=SOFT,
-                        highlightbackground=CARD_BORDER, highlightthickness=1)
+        card = tk.Frame(parent, bg=T["soft"],
+                        highlightbackground=T["card_border"], highlightthickness=1)
         card.grid(row=0, column=col, sticky="nsew", padx=padx)
 
-        inner = tk.Frame(card, bg=SOFT, padx=22, pady=22)
+        inner = tk.Frame(card, bg=T["soft"], padx=22, pady=22)
         inner.pack(fill=tk.BOTH, expand=True)
 
         tk.Label(inner, text="🔒  Locked",
                  font=("Helvetica", 9, "bold"),
-                 bg=FAINT, fg=T["muted"],
+                 bg=T["faint"], fg=T["muted"],
                  padx=10, pady=3).pack(anchor="w", pady=(0, 12))
 
         tk.Label(inner, text=GAME_NAMES.get(gid, gid),
                  font=("Helvetica", 15, "bold"),
-                 bg=SOFT, fg=T["muted"]).pack(anchor="w")
+                 bg=T["soft"], fg=T["muted"]).pack(anchor="w")
 
         tk.Label(inner,
                  text=f"Unlocks with: {req_name}",
-                 font=("Helvetica", 10), bg=SOFT, fg=MUTED,
+                 font=("Helvetica", 10), bg=T["soft"], fg=T["muted"],
                  justify="left", wraplength=260).pack(anchor="w",
                                                      pady=(6, 18))
 
         tk.Label(inner, text="Play the game first, then the guide opens.",
-                 font=("Helvetica", 9), bg=SOFT, fg=DIM,
+                 font=("Helvetica", 9), bg=T["soft"], fg=T["dim"],
                  justify="left", wraplength=260).pack(anchor="w")
 
     # Per-gid explanation for the "No guide needed" placeholder card.
@@ -257,21 +257,21 @@ class TutorialsPanel:
         consolidation across the basic + intermediate methods).
         """
         T = theme()
-        card = tk.Frame(parent, bg=SOFT,
-                        highlightbackground=CARD_BORDER, highlightthickness=1)
+        card = tk.Frame(parent, bg=T["soft"],
+                        highlightbackground=T["card_border"], highlightthickness=1)
         card.grid(row=0, column=col, sticky="nsew", padx=padx)
 
-        inner = tk.Frame(card, bg=SOFT, padx=22, pady=22)
+        inner = tk.Frame(card, bg=T["soft"], padx=22, pady=22)
         inner.pack(fill=tk.BOTH, expand=True)
 
         tk.Label(inner, text="No guide needed",
                  font=("Helvetica", 9, "bold"),
-                 bg=T["soft"], fg=DIM,
+                 bg=T["soft"], fg=T["dim"],
                  padx=10, pady=3).pack(anchor="w", pady=(0, 12))
 
         tk.Label(inner, text=GAME_NAMES.get(gid, gid),
                  font=("Helvetica", 15, "bold"),
-                 bg=SOFT, fg=T["muted"]).pack(anchor="w")
+                 bg=T["soft"], fg=T["muted"]).pack(anchor="w")
 
         reason = self._NO_GUIDE_REASONS.get(
             gid,
@@ -279,7 +279,7 @@ class TutorialsPanel:
         )
         tk.Label(inner,
                  text=reason,
-                 font=("Helvetica", 10), bg=SOFT, fg=MUTED,
+                 font=("Helvetica", 10), bg=T["soft"], fg=T["muted"],
                  justify="left", wraplength=260).pack(anchor="w", pady=(6, 0))
 
     def _coming_soon_card(self, parent, col, padx, gid):
@@ -291,11 +291,11 @@ class TutorialsPanel:
         fractions, conversions) all warrant proper guides.
         """
         T = theme()
-        card = tk.Frame(parent, bg=SOFT,
-                        highlightbackground=CARD_BORDER, highlightthickness=1)
+        card = tk.Frame(parent, bg=T["soft"],
+                        highlightbackground=T["card_border"], highlightthickness=1)
         card.grid(row=0, column=col, sticky="nsew", padx=padx)
 
-        inner = tk.Frame(card, bg=SOFT, padx=22, pady=22)
+        inner = tk.Frame(card, bg=T["soft"], padx=22, pady=22)
         inner.pack(fill=tk.BOTH, expand=True)
 
         tk.Label(inner, text="Guide coming soon",
@@ -305,12 +305,12 @@ class TutorialsPanel:
 
         tk.Label(inner, text=GAME_NAMES.get(gid, gid),
                  font=("Helvetica", 15, "bold"),
-                 bg=SOFT, fg=T["muted"]).pack(anchor="w")
+                 bg=T["soft"], fg=T["muted"]).pack(anchor="w")
 
         tk.Label(inner,
                  text=("A step-by-step walkthrough for this mode is "
                        "in the works. Play the game in the meantime."),
-                 font=("Helvetica", 10), bg=SOFT, fg=MUTED,
+                 font=("Helvetica", 10), bg=T["soft"], fg=T["muted"],
                  justify="left", wraplength=260).pack(anchor="w", pady=(6, 0))
 
     # ============================================================ navigation

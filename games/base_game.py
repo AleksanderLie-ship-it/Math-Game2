@@ -103,9 +103,9 @@ class BaseGame:
         if self.GAME_ID and self.GAME_ID in TUTORIAL_REGISTRY:
             tk.Button(top, text="ⓘ  Help",
                       font=("Helvetica", 11, "bold"),
-                      bg=T["bg"], fg="#4f46e5",
+                      bg=T["bg"], fg=T["accent"],
                       relief="flat", bd=0, cursor="hand2",
-                      activebackground="#f8fafc", activeforeground="#4338ca",
+                      activebackground=T["soft"], activeforeground=T["accent_dark"],
                       command=self._open_helper_modal).pack(side=tk.RIGHT,
                                                             padx=(0, 14))
 

@@ -48,6 +48,31 @@ games/
   frac_base.py (shared parser) + frac_basic / frac_intermediate / frac_advanced
   conv_basic / conv_intermediate / conv_advanced
 
+  screens/                    UI screens carved out of game.py in v0.9.0
+                              (two passes) so each module stays well under
+                              the 50 KB bindfs truncation threshold. Each
+                              module exports show_*(app) entry points that
+                              take the App instance and read its profile
+                              stores directly (`app._ach_store`, etc.).
+                              GAMES / _DIFFICULTY_TIERS / __version__ live
+                              in game.py and are lazy-imported (sidesteps
+                              the circular-import that an eager top-level
+                              `from game import …` would create).
+    __init__.py
+    settings_dialog.py        show_settings_dialog + _THEME_META + theme picker
+    shop_modal.py             show_shop_modal + SHOP_ITEMS registry
+                              (game.py imports SHOP_ITEMS from here)
+    trophy_room.py            show_trophy_room + tag/insert helpers
+    profile_screen.py         show_profile_screen + load_profile +
+                              _profile_card; App.show_profiles /
+                              App._load_profile delegate here
+    main_menu.py              show_menu + show_menu_matrix + _family_tile +
+                              _tools_row + _build_tools_tiles + _shop_tile;
+                              App.show_menu delegates here
+    difficulty_screen.py      show_difficulty + show_difficulty_matrix +
+                              _difficulty_tile + _render_lock_hint;
+                              App.show_difficulty delegates here
+
   tutorials/
     __init__.py               TUTORIAL_REGISTRY
     slideshow_frame.py        reusable SlideshowFrame + shared drawing helpers
@@ -84,9 +109,19 @@ Rules that, if violated, break the product or break pupil trust. Do not re-deriv
 - **Tk 9 widget `pady=` / `padx=` must be int** on widget constructors (`tk.Frame`, `tk.Label`, `tk.Button`). Tuples are only valid on `.pack(pady=…)` / `.grid(pady=…)`. This bit us in v0.7.0 — fix the caller, not the widget.
 - **Canvas is a fixed 720×340** inside every tutorial slide. Anything reaching `x>720` or `y>340` WILL clip. Use `canvas.bbox` on a hidden probe text to measure strings before drawing pills/strips — see the Slide 4 Tip box in `tutorial_div_basic._slide_4` for the measure-then-draw pattern.
 - **Bindfs mount may refuse writes / deletes.** If a write to `build.bat` (or any file clean in git HEAD) returns "Operation not permitted", do not fight the FS — document a manual follow-up in CHANGELOG and move on. For deletes, call `mcp__cowork__allow_cowork_file_delete` once per session; that unlocks the folder.
+- **Bindfs truncates large incremental writes.** Files over ~50 KB (currently `game.py`, `stats_screen.py`, `base_game.py`) intermittently get a partial buffer flush — the file ends mid-line / mid-docstring with no error reported. Discipline:
+  1. **For files > ~50 KB, prefer atomic full-file `Write` over incremental `Edit`.** Read the file fully into a Python string, do the surgery in memory, then write the whole thing back. Atomic overwrite avoids the merge-into-buffer step that triggers the truncation.
+  2. **Verify after every large-file write.** Run `python -m py_compile <path>` and check the file ends with `\n` (not a partial token). Repair on the spot if truncation is detected.
+  3. **Avoid edits at the file tail.** The end of long files truncates more often than the middle. When choice exists, edit near the top.
 - **Update ritual.** At task end, update `VERSION` (if version bumps), `CHANGELOG.md` (new entry), and the "Current state" block in this file. Be concise.
 
 ## Current state
+
+**game.py decomposition shipped (v0.9.0 prep, two passes).** Six UI screens carved out of `game.py` into a new `games/screens/` package. Pass 1 moved the three modals (Settings dialog, Shop modal, Trophy Room) and the `SHOP_ITEMS` registry. Pass 2 moved the page-level screens (profile / main menu / difficulty selection) plus all their internal tile and lock-hint helpers, including the matrix-theme variants. Every public App method that any other code calls (`show_profiles` / `show_menu` / `show_difficulty` / `_show_settings` / `_show_shop` / `_show_achievements` / `_load_profile`) survives as a four-line delegator that lazy-imports the module body — call-sites are intact, no caller code changed. `GAMES` / `_DIFFICULTY_TIERS` / `__version__` stay in `game.py` and the screen modules lazy-import them at render time (eager top-level `from game import …` would deadlock the circular dependency). Final size: `game.py` 2217 → **504 lines, ~20 KB**; new modules 165 / 191 / 204 / 270 / 344 / 736 lines (largest is `main_menu.py` at 31 KB — under the 50 KB bindfs cap with comfortable margin). Pure refactor — no behaviour change, no version bump.
+
+**In-game `(i)` Help button token migration.** The helper modal body (`BaseGame._open_helper_modal`) was already theme-tokened in earlier work; only the helper-trigger button in `_setup_top_bar` had three light-mode hex residues, now migrated to `T["accent"]` / `T["soft"]` / `T["accent_dark"]`. `SlideshowFrame` itself stays light by design — pedagogical canvas drawings need stable contrast — and its on-mount `parent.configure(bg=BG)` still ensures the dark-mode menu doesn't bleed through the modal host's padding gaps.
+
+
 
 Last shipped: **v0.8.0** (2026-05-01) — **Shop & Cosmetics milestone open.** Decision to bump straight to a minor version: the breadth of work since v0.7.13 (persistent purchases, full theme architecture, achievement-gated cosmetics, lifetime point bookkeeping, two themed cosmetics shipping) is conceptually a minor bump rather than another patch suffix. Avatar packs + frames remain as v0.8.x work.
 
